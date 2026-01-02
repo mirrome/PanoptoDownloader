@@ -1,0 +1,103 @@
+# Marketing Management Course - Panopto Downloader Config
+# =====================================================
+#
+# HOW TO USE:
+# 1. Open each lecture in Chrome and copy the URL
+# 2. Paste the URL in the 'url' field below
+# 3. Run: panopto-downloader -c marketing_management.yaml download
+#
+# TIP: Close Chrome before running for reliable cookie access
+
+browser: chrome
+
+# Where to save videos
+download_path: ~/Videos/MIT_Lectures/Marketing_Management
+
+# Output naming: Course_Title_Date.mp4
+naming:
+  format: "{course}_{title}_{date}"
+  date_format: "%Y-%m-%d"
+  create_lecture_folders: true  # Creates a folder per lecture named after the title
+
+# Download 4 videos at a time (change to 1 for sequential, or adjust as needed)
+download:
+  parallel_workers: 4
+  download_all_streams: true  # Download composed, camera, and slides for each lecture
+
+# Skip already downloaded files
+resume:
+  check_existing: true
+
+# Retry failed downloads 3 times
+retry:
+  enabled: true
+  max_attempts: 3
+
+# ============================================================================
+# 15.732 - Marketing Management (Prof. Catherine Tucker)
+# ============================================================================
+
+lectures:
+  # Session 1
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=438b7917-c476-4bf1-9f75-b36a01009ca9"
+    title: "Assessment of Risk - Customer Behavior Distortions"
+    course: "15.732 - Marketing Management"
+    date: 2025-10-03
+    instructor: "Catherine Tucker"
+
+  # Session 2
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=d503d54c-dc62-4815-bc79-b36a010eff3e"
+    title: "Assessment of Risk - Competitive Risk and Measurement"
+    course: "15.732 - Marketing Management"
+    date: 2025-10-04
+    instructor: "Catherine Tucker"
+
+  # Session 3
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=3743bd18-d69a-4f10-b3fe-b3760138e05c"
+    title: "Choice of Customer - Segmentation"
+    course: "15.732 - Marketing Management"
+    date: 2025-10-18
+    instructor: "Catherine Tucker"
+
+  # Session 4
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=5e315382-9bef-4436-bd01-b376013a3e78"
+    title: "Choice of Customer - Targeting"
+    course: "15.732 - Marketing Management"
+    date: 2025-10-19
+    instructor: "Catherine Tucker"
+
+  # Session 5
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=7079bd0f-ef26-4ad3-ac74-b378011119ce"
+    title: "Choice of Customer - Positioning and Market Research"
+    course: "15.732 - Marketing Management"
+    date: 2025-10-20
+    instructor: "Catherine Tucker"
+
+  # Session 6
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=7b55c7a1-839c-43ac-a886-b37801130aee"
+    title: "Execution of Positioning - Product Simulation"
+    course: "15.732 - Marketing Management"
+    date: 2025-10-20
+    instructor: "Catherine Tucker"
+
+  # Session 7
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=c92be9eb-11e1-4443-827a-b394013c7684"
+    title: "Execution of Positioning - Placement"
+    course: "15.732 - Marketing Management"
+    date: 2025-11-14
+    instructor: "Catherine Tucker"
+
+  # Session 8
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=8a342f48-38f8-4dea-9b13-b394013db303"
+    title: "Execution of Positioning - Pricing"
+    course: "15.732 - Marketing Management"
+    date: 2025-11-15
+    instructor: "Catherine Tucker"
+
+  # Session 9
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=037f2db8-b50b-45ea-9083-b3a900cd4948"
+    title: "Execution of Positioning - Promotion"
+    course: "15.732 - Marketing Management"
+    date: 2025-12-05
+    instructor: "Catherine Tucker"
+

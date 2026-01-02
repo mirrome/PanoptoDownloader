@@ -1,0 +1,96 @@
+# Organizations Lab Course - Panopto Downloader Config
+# =====================================================
+#
+# HOW TO USE:
+# 1. Open each lecture in Chrome and copy the URL
+# 2. Paste the URL in the 'url' field below
+# 3. Run: panopto-downloader -c organizations_lab.yaml download
+#
+# TIP: Close Chrome before running for reliable cookie access
+
+browser: chrome
+
+# Where to save videos
+download_path: ~/Videos/MIT_Lectures/Organizations_Lab
+
+# Output naming: Course_Title_Date.mp4
+naming:
+  format: "{course}_{title}_{date}"
+  date_format: "%Y-%m-%d"
+  create_lecture_folders: true  # Creates a folder per lecture named after the title
+
+# Download 4 videos at a time (change to 1 for sequential, or adjust as needed)
+download:
+  parallel_workers: 4
+  download_all_streams: true  # Download composed, camera, and slides for each lecture
+
+# Skip already downloaded files
+resume:
+  check_existing: true
+
+# Retry failed downloads 3 times
+retry:
+  enabled: true
+  max_attempts: 3
+
+# ============================================================================
+# 15.705 - Organizations Lab (Prof. Nelson Repenning)
+# ============================================================================
+
+lectures:
+  # Session 1
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=4d2ffa3d-4f61-415e-a464-b2f1013da8a5"
+    title: "Writing Effective Problem Statements"
+    course: "15.705 - Organizations Lab"
+    date: 2025-06-06
+    instructor: "Nelson Repenning"
+
+  # Session 2 (REMOTE)
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=77779a8d-c0c7-4b2f-acb6-b33301487495"
+    title: "DWD Principle: Solve the Right Problem (and Solve the Problem Right); DWD Skill: Doing a good investigation"
+    course: "15.705 - Organizations Lab"
+    date: 2025-08-08
+    instructor: "Nelson Repenning"
+
+  # Session 3
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=91a5b250-bb7c-4a58-a69f-b35400c715aa"
+    title: "Dynamic Work Design as a System for Discovery; Dynamic Work Design Principle: Structure for Discovery"
+    course: "15.705 - Organizations Lab"
+    date: 2025-09-12
+    instructor: "Nelson Repenning"
+
+  # Session 4
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=1ac45fc2-ac66-4708-96a7-b36a010f9814"
+    title: "Dynamic Work Design Principle: Connect the Human Chain"
+    course: "15.705 - Organizations Lab"
+    date: 2025-10-03
+    instructor: "Nelson Repenning"
+
+  # Session 5 (WEDNESDAY)
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=918594f9-7f5a-4e3e-9c27-b37900e5ed1d"
+    title: "Dynamic Work Design Principle: Regulate the Flow; Dynamic Work Design Principle: Visualize the Work"
+    course: "15.705 - Organizations Lab"
+    date: 2025-10-22
+    instructor: "Nelson Repenning"
+
+  # Session 6 (SATURDAY)
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=c8e0d9e0-dcf9-4ebd-9dd2-b394013f65d3"
+    title: "Dynamic Work Design in Practice"
+    course: "15.705 - Organizations Lab"
+    date: 2025-11-15
+    instructor: "Nelson Repenning"
+
+  # Session 7
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=d5e094b7-08d7-438b-9ba3-b3b5011521a7"
+    title: "Student Presentations A"
+    course: "15.705 - Organizations Lab"
+    date: 2025-12-19
+    instructor: "Nelson Repenning"
+
+  # Session 8
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=709ef186-cf1c-45de-9926-b3b50115bbd9"
+    title: "Student Presentations B"
+    course: "15.705 - Organizations Lab"
+    date: 2025-12-19
+    instructor: "Nelson Repenning"
+

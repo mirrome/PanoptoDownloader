@@ -1,0 +1,109 @@
+# Finance Management Course - Panopto Downloader Config
+# =====================================================
+#
+# HOW TO USE:
+# 1. Open each lecture in Chrome and copy the URL
+# 2. Paste the URL in the 'url' field below
+# 3. Run: panopto-downloader -c finance_management.yaml download
+#
+# TIP: Close Chrome before running for reliable cookie access
+
+browser: chrome
+
+# Where to save videos
+download_path: ~/Videos/MIT_Lectures/Finance_Management
+
+# Output naming: Course_Title_Date.mp4
+naming:
+  format: "{course}_{title}_{date}"
+  date_format: "%Y-%m-%d"
+  create_lecture_folders: true  # Creates a folder per lecture named after the title
+
+# Download 2 videos at a time (change to 1 for sequential, 3 for faster)
+download:
+  parallel_workers: 4
+  download_all_streams: true  # Download composed, camera, and slides for each lecture
+
+# Skip already downloaded files
+resume:
+  check_existing: true
+
+# Retry failed downloads 3 times
+retry:
+  enabled: true
+  max_attempts: 3
+
+# ============================================================================
+# 15.724 - Financial Management (Prof. Adrien Verdelhan)
+# ============================================================================
+
+lectures:
+  # Day 1
+  - url: https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=2c6fb750-65c1-43f8-9a4a-b35400c76c53
+    title: "Introduction and Net Present Value"
+    course: "15.724"
+    date: 2025-09-12
+    instructor: "Adrien Verdelhan"
+
+  # Day 2
+  - url: https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=ffbf8b40-0fd7-48da-b776-b35400c8527b
+    title: "Alternatives to NPV and Capital Budgeting"
+    course: "15.724"
+    date: 2025-09-13
+    instructor: "Adrien Verdelhan"
+
+  # Day 3
+  - url: https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=7ae5d299-d1a2-4235-9acd-b36a011053cf
+    title: "Bonds"
+    course: "15.724"
+    date: 2025-10-04
+    instructor: "Adrien Verdelhan"
+
+  # Day 4
+  - url: https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=9f73937e-ded5-41f4-8dee-b37900e01885
+    title: "Stocks"
+    course: "15.724"
+    date: 2025-10-21
+    instructor: "Adrien Verdelhan"
+
+  # Day 5
+  - url: https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=3ede508a-546c-4557-84f4-b37900ea6abc
+    title: "Capital Structure"
+    course: "15.724"
+    date: 2025-10-23
+    instructor: "Adrien Verdelhan"
+
+  # Day 6
+  - url: https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=a73c3cf1-3f50-4d37-a187-b37900fb86b4
+    title: "Diversification"
+    course: "15.724"
+    date: 2025-10-24
+    instructor: "Adrien Verdelhan"
+
+  # Day 7
+  - url: https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=c0cce843-d50f-4da5-8c40-b38c00f24528
+    title: "Risk and Returns"
+    course: "15.724"
+    date: 2025-11-14
+    instructor: "Adrien Verdelhan"
+
+  # Day 8
+  - url: https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=2d85db5c-ed18-4810-b36d-b3a900cc23ce
+    title: "Options"
+    course: "15.724"
+    date: 2025-12-05
+    instructor: "Adrien Verdelhan"
+
+  # Day 9
+  - url: https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=a01c42bb-5c5e-4b95-aa60-b3a900d12904
+    title: "Valuation Revisited"
+    course: "15.724"
+    date: 2025-12-06
+    instructor: "Adrien Verdelhan"
+
+  # Day 10
+  - url: https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=5169e452-d974-4c88-a278-b3b5011a15d9
+    title: "Final Review"
+    course: "15.724"
+    date: 2025-12-20
+    instructor: "Adrien Verdelhan"
