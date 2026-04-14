@@ -60,6 +60,11 @@ temp/               # Temporary processing files
 # Keep example config
 !config.example.yaml
 
+# Secrets — never commit these
+.env
+.env.*
+!.env.example
+
 # Cursor
 .cursor/
 

@@ -222,6 +222,9 @@ class AppConfig(BaseModel):
     browser: BrowserType = Field(
         default=BrowserType.CHROME, description="Browser for cookie extraction"
     )
+    cookies_file: Path | None = Field(
+        default=None, description="Path to cookies.txt file (optional)"
+    )
     download_path: Path = Field(
         default=Path("~/Videos/MIT_Lectures").expanduser(),
         description="Download directory",
@@ -252,6 +255,16 @@ class AppConfig(BaseModel):
     @classmethod
     def expand_path(cls, v: str | Path) -> Path:
         """Expand user home directory in path."""
+        if isinstance(v, str):
+            v = Path(v)
+        return v.expanduser()
+
+    @field_validator("cookies_file", mode="before")
+    @classmethod
+    def expand_cookies_path(cls, v: str | Path | None) -> Path | None:
+        """Expand user home directory in cookies file path."""
+        if v is None:
+            return None
         if isinstance(v, str):
             v = Path(v)
         return v.expanduser()

@@ -1,0 +1,98 @@
+# MIT EMBA Course List
+# Each entry has:
+#   search: term used to find the Panopto folder (usually the course number)
+#   folder: name of the local download subfolder (human-readable course name)
+#
+# Usage:
+#   panopto-downloader batch --output-dir "/Volumes/NAS/MIT EMBA/MIT_Lectures" --all-streams
+#   panopto-downloader batch --output-dir "/Volumes/NAS/MIT EMBA/MIT_Lectures" --all-streams --dry-run
+
+output_path: "/Volumes/NAS/MIT EMBA/MIT_Lectures"
+
+courses:
+  - search: "EMBA26 Orientation"
+    folder: "EMBA26 Orientation"
+
+  - search: "15.700"
+    folder: "15.700 Leadership and Integrative Management"
+
+  - search: "15.722"
+    folder: "15.722 Applied Economics for Managers"
+
+  - search: "15.717"
+    folder: "15.717 Organizational Processes"
+
+  - search: "15.721"
+    folder: "15.721 Communication and Persuasion Through Data for Executives"
+
+  - search: "15.715"
+    folder: "15.715 Entrepreneurial Strategy"
+
+  - search: "15.714"
+    folder: "15.714 Competitive Strategy"
+
+  - search: "15.720"
+    folder: "15.720 Financial Accounting"
+
+  - search: "15.701"
+    folder: "15.701 Innovation-Driven Entrepreneurial Advantage"
+
+  - search: "15.730"
+    folder: "15.730 Data, Models, and Decisions"
+
+  - search: "15.236"
+    folder: "15.236 Global Business of Artificial Intelligence and Robotics (GBAIR)"
+
+  - search: "15.736"
+    folder: "15.736 Introduction to System Dynamics"
+
+  - search: "15.734"
+    folder: "15.734 Introduction to Operations Management"
+
+  - search: "15.716"
+    folder: "15.716 Leading Organizations"
+
+  - search: "15.724"
+    folder: "15.724 Financial Management"
+
+  - search: "15.618"
+    folder: "15.618 Startups and the Law"
+
+  - search: "15.732"
+    folder: "15.732 Marketing Management"
+
+  - search: "15.702"
+    folder: "15.702 Leading in a Global Context: Macroeconomics and Global Markets"
+
+  - search: "15.707"
+    folder: "15.707 Global Strategy"
+
+  - search: "15.S10"
+    folder: "15.S10 SSIM: The Entrepreneurial Journey for Executives"
+
+  - search: "15.708"
+    folder: "15.708 Global Organizations Lab"
+
+  - search: "15.705"
+    folder: "15.705 Organizations Lab"
+
+  - search: "15.718"
+    folder: "15.718 Introduction to Disciplined Entrepreneurship"
+
+  - search: "15.S65"
+    folder: "15.S65 SSIM: Deploying AI in the Corporation"
+
+  - search: "15.712"
+    folder: "15.712 Negotiation and Influence"
+
+  - search: "15.723"
+    folder: "15.723 Advanced Applied Macroeconomics and International Institutions"
+
+  - search: "15.773"
+    folder: "15.773 Hands-on Deep Learning"
+
+  - search: "6.8300"
+    folder: "6.8300 Advances in Computer Vision"
+
+  - search: "6.8610"
+    folder: "6.8610 Grad NLP"

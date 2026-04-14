@@ -5,11 +5,14 @@ A Python CLI tool for downloading MIT Sloan Panopto lecture recordings with supp
 ## Features
 
 - **Multiple Stream Downloads**: Download composed (slides+camera), camera-only, or slides-only
+- **ALL Camera Angles**: Download every camera angle (PC1, PC2, Wideshot, chalkboards) using `--all-cameras`
+- **Automatic Captions**: Downloads subtitles/closed captions automatically
+- **Cookie File Support**: Use cookies.txt file for authentication (no need to close browser)
 - **Batch Processing**: Configure once, download entire courses
 - **Parallel Downloads**: Concurrent downloads for faster batch processing
 - **Resume Support**: Automatically skips already-downloaded files
 - **High Quality**: Prefers pre-composed 1920x960 streams when available
-- **Cookie Authentication**: Extracts cookies from Chrome/Safari automatically
+- **Cross-Platform**: Works on Windows, macOS, and Linux
 
 ## Quick Start
 
@@ -84,6 +87,9 @@ panopto-downloader download -u "URL" -o "filename.mp4"
 
 # Download all three streams (composed, camera, slides)
 panopto-downloader download -u "URL" -o "Lecture1" --all-streams
+
+# Download ALL camera angles (PC1, PC2, Wideshot, chalkboards, etc.)
+panopto-downloader download -u "URL" -o "Lecture1" --all-cameras --cookies cookies.txt
 
 # Batch download from config
 panopto-downloader download
