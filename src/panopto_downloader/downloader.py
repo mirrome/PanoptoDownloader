@@ -82,6 +82,35 @@ class VideoDownloader:
         p = Path("~/.config/panopto-downloader/cookies.txt").expanduser()
         return p if p.exists() and p.stat().st_size > 100 else None
 
+    @staticmethod
+    def _is_complete(path: Path, min_bytes: int = 1_000_000) -> bool:
+        """Return True if path exists as a complete file (no .part counterpart)."""
+        return path.exists() and path.stat().st_size >= min_bytes
+
+    @staticmethod
+    def _part_path(path: Path) -> Path:
+        """Return the yt-dlp .part file path for a given output path."""
+        return path.with_suffix(path.suffix + ".part")
+
+    @staticmethod
+    def _yt_dlp_stream_cmd(output_path: Path, stream_url: str) -> list[str]:
+        """Build a yt-dlp command for a direct CDN stream URL.
+
+        Includes resume (--continue) and retry flags so interrupted downloads
+        pick up from where they left off rather than starting over.
+        """
+        return [
+            "yt-dlp",
+            "--no-warnings",
+            "--continue",              # resume .part files
+            "--retries", "10",         # retry full download on error
+            "--fragment-retries", "10",# retry individual HLS fragments
+            "--retry-sleep", "5",      # seconds between retries
+            "--socket-timeout", "60",  # socket timeout per operation
+            "-o", str(output_path),
+            stream_url,
+        ]
+
     def _get_yt_dlp_cmd(self) -> list[str]:
         """Get base yt-dlp command with common options.
 
@@ -873,26 +902,26 @@ class VideoDownloader:
         # ---- 1. Composed / stitched view (from PodcastStreams) ----------
         if include_composed:
             composed_path = Path(str(base_path) + "_composed.mp4")
+            part_path = self._part_path(composed_path)
             console.print("[bold cyan]── Composed view ──[/bold cyan]")
 
-            if composed_path.exists() and composed_path.stat().st_size > 1_000_000:
+            if self._is_complete(composed_path):
                 print_info(f"Already exists ({format_bytes(composed_path.stat().st_size)}), skipping")
                 results["composed"] = composed_path
             elif dry_run:
                 console.print(f"  [dim]Would download: {composed_path.name}[/dim]")
                 results["composed"] = composed_path
             elif podcast_streams and podcast_streams[0].stream_url:
-                # Use the direct CDN URL from DeliveryInfo — no browser, no cookies needed
                 cdn_url = podcast_streams[0].stream_url
+                if part_path.exists():
+                    console.print(
+                        f"  [yellow]Resuming partial download "
+                        f"({format_bytes(part_path.stat().st_size)} already downloaded)…[/yellow]"
+                    )
                 try:
-                    cmd = [
-                        "yt-dlp",
-                        "--no-warnings",
-                        "-o", str(composed_path),
-                        cdn_url,
-                    ]
+                    cmd = self._yt_dlp_stream_cmd(composed_path, cdn_url)
                     proc = subprocess.run(cmd, capture_output=False, check=False)
-                    if proc.returncode == 0 and composed_path.exists():
+                    if proc.returncode == 0 and self._is_complete(composed_path):
                         results["composed"] = composed_path
                         print_success(f"Composed: {format_bytes(composed_path.stat().st_size)}")
                     else:
@@ -902,18 +931,26 @@ class VideoDownloader:
                     print_error(f"Composed download error: {exc}")
                     results["composed"] = None
             else:
-                # No podcast stream URL in DeliveryInfo. Try viewer URL with
-                # stored cookies; if no cookies, tell the user what to do.
                 if cookies_file:
+                    if part_path.exists():
+                        console.print(
+                            f"  [yellow]Resuming partial download "
+                            f"({format_bytes(part_path.stat().st_size)} already downloaded)…[/yellow]"
+                        )
                     try:
                         cmd = self._get_yt_dlp_cmd()
                         cmd.extend([
+                            "--continue",
+                            "--retries", "10",
+                            "--fragment-retries", "10",
+                            "--retry-sleep", "5",
+                            "--socket-timeout", "60",
                             "-f", "hls-2160/hls-1080/hls-720/hls-480/best",
                             "-o", str(composed_path),
                             url,
                         ])
                         proc = subprocess.run(cmd, capture_output=False, check=False)
-                        if proc.returncode == 0 and composed_path.exists():
+                        if proc.returncode == 0 and self._is_complete(composed_path):
                             results["composed"] = composed_path
                             print_success(f"Composed: {format_bytes(composed_path.stat().st_size)}")
                         else:
@@ -953,7 +990,7 @@ class VideoDownloader:
                 console.print()
                 continue
 
-            if output_path.exists() and output_path.stat().st_size > 1_000_000:
+            if self._is_complete(output_path):
                 print_info(f"Already exists ({format_bytes(output_path.stat().st_size)}), skipping")
                 results[stream_name] = output_path
                 console.print()
@@ -965,11 +1002,18 @@ class VideoDownloader:
                 console.print()
                 continue
 
+            part_path = self._part_path(output_path)
+            if part_path.exists():
+                console.print(
+                    f"  [yellow]Resuming partial download "
+                    f"({format_bytes(part_path.stat().st_size)} already downloaded)…[/yellow]"
+                )
+
             try:
                 # CDN URLs from DeliveryInfo are pre-signed — no auth headers needed
-                cmd = ["yt-dlp", "--no-warnings", "-o", str(output_path), stream.stream_url]
+                cmd = self._yt_dlp_stream_cmd(output_path, stream.stream_url)
                 proc = subprocess.run(cmd, capture_output=False, check=False)
-                if proc.returncode == 0 and output_path.exists():
+                if proc.returncode == 0 and self._is_complete(output_path):
                     results[stream_name] = output_path
                     print_success(f"Saved: {format_bytes(output_path.stat().st_size)}")
                 else:
