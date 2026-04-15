@@ -955,15 +955,19 @@ class VideoDownloader:
                     results["composed"] = None
             else:
                 if cookies_file:
+                    # HLS streams (viewer URL) cannot be byte-resumed — each new
+                    # request gets a fresh signed m3u8, making any existing .part
+                    # file incompatible. Delete it so yt-dlp starts clean.
                     if part_path.exists():
                         console.print(
-                            f"  [yellow]Resuming partial download "
-                            f"({format_bytes(part_path.stat().st_size)} already downloaded)…[/yellow]"
+                            f"  [yellow]Removing stale .part file "
+                            f"({format_bytes(part_path.stat().st_size)}) — "
+                            "HLS streams cannot be byte-resumed, restarting…[/yellow]"
                         )
+                        part_path.unlink(missing_ok=True)
                     try:
                         cmd = self._get_yt_dlp_cmd()
                         cmd.extend([
-                            "--continue",
                             "--retries", "10",
                             "--fragment-retries", "10",
                             "--retry-sleep", "5",
