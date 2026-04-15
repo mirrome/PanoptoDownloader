@@ -1,10 +1,33 @@
 """Video downloading functionality using yt-dlp."""
 
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
 from typing import Any
+
+
+def _yt_dlp_bin() -> str:
+    """Return the path to the yt-dlp binary in the current Python environment.
+
+    Resolves relative to sys.executable so it always finds the binary inside
+    the active venv, even when the venv's bin directory is not on PATH.
+    """
+    import shutil
+
+    # 1. Same directory as the running Python interpreter (works in any venv)
+    candidate = Path(sys.executable).parent / "yt-dlp"
+    if candidate.exists():
+        return str(candidate)
+
+    # 2. System PATH fallback (works when installed globally)
+    found = shutil.which("yt-dlp")
+    if found:
+        return found
+
+    # 3. Let subprocess raise a clear FileNotFoundError
+    return "yt-dlp"
 
 from rich.console import Console
 from tenacity import (
@@ -100,7 +123,7 @@ class VideoDownloader:
         pick up from where they left off rather than starting over.
         """
         return [
-            "yt-dlp",
+            _yt_dlp_bin(),
             "--no-warnings",
             "--continue",              # resume .part files
             "--retries", "10",         # retry full download on error
@@ -117,7 +140,7 @@ class VideoDownloader:
         Returns:
             List of command arguments.
         """
-        cmd = ["yt-dlp"]
+        cmd = [_yt_dlp_bin()]
 
         # Used only for the viewer-URL fallback path (no OAuth + no podcast URL).
         # Priority: explicit cookies file > exported cookies file > live browser.
