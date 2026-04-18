@@ -1,0 +1,15 @@
+# MIT EECS Panopto Courses
+# Uses the --profile eecs auth profile (mit.hosted.panopto.com)
+#
+# Usage:
+#   panopto-downloader --profile eecs batch -c eecs_courses.yaml --all-streams --dry-run
+#   panopto-downloader --profile eecs batch -c eecs_courses.yaml --all-streams
+
+output_path: "/Volumes/NAS/MIT EMBA/MIT_Lectures"
+
+courses:
+  - search: "6.8610"
+    folder: "6.8610 Grad NLP"
+
+  - search: "6.8300"
+    folder: "6.8300 Advances in Computer Vision"
