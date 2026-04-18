@@ -9,7 +9,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from . import __version__
-from .auth import AuthError, PanoptoAuth
+from .auth import AuthError, DEFAULT_PROFILE, PanoptoAuth, TokenStorage
 from .config import ConfigError, ConfigLoader, create_default_config, load_config
 from .downloader import DownloadError, VideoDownloader
 from .models import BrowserType
@@ -85,6 +85,12 @@ def print_quick_usage() -> None:
     is_flag=True,
     help="Enable verbose output",
 )
+@click.option(
+    "--profile", "-P",
+    default=DEFAULT_PROFILE,
+    show_default=True,
+    help="Auth profile to use (e.g. sloan, eecs). Each profile stores tokens separately.",
+)
 @click.version_option(version=__version__, prog_name="panopto-downloader")
 @click.pass_context
 def main(
@@ -93,8 +99,17 @@ def main(
     browser: str | None,
     dry_run: bool,
     verbose: bool,
+    profile: str,
 ) -> None:
-    """Panopto Lecture Downloader - Download MIT Sloan lecture recordings.
+    """Panopto Lecture Downloader - Download MIT lecture recordings.
+
+    \b
+    PROFILES:
+      Use --profile to stay logged in to multiple Panopto instances at once.
+      panopto-downloader --profile sloan auth login
+      panopto-downloader --profile eecs  auth login --server mit.hosted.panopto.com ...
+      panopto-downloader --profile eecs  discover
+      panopto-downloader auth list-profiles
 
     \b
     QUICK START:
@@ -103,22 +118,21 @@ def main(
 
     \b
     COMMANDS:
-      download   Download lectures (single or batch)
-      info       Show video information and streams
-      list       List configured lectures with status
-      validate   Validate configuration file
-      init       Create new config file
+      download        Download lectures (single or batch)
+      batch           Batch download from a courses YAML file
+      browse          Interactively browse and download via REST API
+      discover        Find all accessible course folders
+      info            Show video information and streams
+      list            List configured lectures with status
+      auth            Manage authentication (login, status, logout)
+      validate        Validate configuration file
+      init            Create new config file
 
     \b
     EXAMPLES:
-      # Single video
       panopto-downloader download -u "https://..." -o "Lecture1.mp4"
-
-      # All streams (composed + camera + slides)
-      panopto-downloader download -u "https://..." -o "Lecture1" -a
-
-      # Batch with parallel downloads
-      panopto-downloader download -p -w 3
+      panopto-downloader --profile eecs batch -c eecs_courses.yaml --all-streams
+      panopto-downloader --profile eecs discover
 
     \b
     NOTE: Close Chrome before running for reliable cookie access.
@@ -128,6 +142,7 @@ def main(
     ctx.obj["dry_run"] = dry_run
     ctx.obj["config_path"] = config_path
     ctx.obj["browser_override"] = browser
+    ctx.obj["profile"] = profile
 
     # If no subcommand, run the default download
     if ctx.invoked_subcommand is None:
@@ -520,7 +535,13 @@ def auth() -> None:
     default=None,
     help="API client secret (default: $PANOPTO_CLIENT_SECRET from .env)",
 )
-def auth_login(server: str | None, client_id: str | None, client_secret: str | None) -> None:
+@click.pass_context
+def auth_login(
+    ctx: click.Context,
+    server: str | None,
+    client_id: str | None,
+    client_secret: str | None,
+) -> None:
     """Authenticate with Panopto via your browser.
 
     \b
@@ -530,19 +551,22 @@ def auth_login(server: str | None, client_id: str | None, client_secret: str | N
 
     \b
     EXAMPLES:
-      panopto-downloader auth login                      (uses .env)
-      panopto-downloader auth login --client-id "id"    (explicit)
+      panopto-downloader auth login                           (default profile, uses .env)
+      panopto-downloader --profile eecs auth login \\
+        --server mit.hosted.panopto.com --client-id "id"     (named profile)
 
     \b
     HOW IT WORKS:
       1. Your browser opens the Panopto login page.
       2. Sign in with your institutional account.
-      3. Tokens are saved to ~/.config/panopto-downloader/tokens.json.
+      3. Tokens are saved to ~/.config/panopto-downloader/tokens-<profile>.json.
       You will not need to log in again until the refresh token expires.
     """
     from .auth import get_env
 
     print_banner()
+
+    profile = ctx.obj.get("profile", DEFAULT_PROFILE) if ctx.obj else DEFAULT_PROFILE
 
     # Resolve values: flag → env var / .env → hardcoded default
     resolved_server = server or get_env("PANOPTO_SERVER") or DEFAULT_SERVER
@@ -554,17 +578,18 @@ def auth_login(server: str | None, client_id: str | None, client_secret: str | N
             "No client ID found. Pass --client-id or set PANOPTO_CLIENT_ID in .env"
         )
 
-    pa = PanoptoAuth()
+    pa = PanoptoAuth(profile=profile)
 
     if pa.is_logged_in():
         st = pa.status()
         if not click.confirm(
-            f"Already logged in to {st['server']}. Re-authenticate?",
+            f"Profile '{profile}' is already logged in to {st['server']}. Re-authenticate?",
             default=False,
         ):
             return
 
-    console.print(f"\n[bold]Opening browser for[/bold] {resolved_server} …")
+    console.print(f"\n[bold]Profile:[/bold] {profile}")
+    console.print(f"[bold]Opening browser for[/bold] {resolved_server} …")
     console.print("[dim]Waiting up to 2 minutes for you to complete login in the browser.[/dim]\n")
 
     try:
@@ -572,36 +597,66 @@ def auth_login(server: str | None, client_id: str | None, client_secret: str | N
     except AuthError as exc:
         raise click.ClickException(str(exc)) from exc
 
-    console.print(f"[green]✓[/green] Logged in to [bold]{resolved_server}[/bold]")
-    console.print("[dim]Tokens saved. Run 'panopto-downloader browse' to explore content.[/dim]")
+    console.print(f"[green]✓[/green] Profile [bold]{profile}[/bold] logged in to [bold]{resolved_server}[/bold]")
+    console.print(f"[dim]Tokens saved. Run 'panopto-downloader --profile {profile} browse' to explore content.[/dim]")
 
 
 @auth.command("status", context_settings=CONTEXT_SETTINGS)
-def auth_status() -> None:
-    """Show current authentication status."""
+@click.pass_context
+def auth_status(ctx: click.Context) -> None:
+    """Show current authentication status for all profiles (or a specific one)."""
     print_banner()
-    pa = PanoptoAuth()
-    st = pa.status()
 
-    if not st["logged_in"]:
-        console.print("[yellow]Not logged in.[/yellow]")
-        console.print("Run: [cyan]panopto-downloader auth login --client-id YOUR_ID[/cyan]")
-        return
+    profile = ctx.obj.get("profile", DEFAULT_PROFILE) if ctx.obj else DEFAULT_PROFILE
 
-    secs: int = st["token_expires_in_seconds"]  # type: ignore[assignment]
-    if secs > 3600:
-        expiry = f"{secs // 3600}h {(secs % 3600) // 60}m"
-    elif secs > 60:
-        expiry = f"{secs // 60}m {secs % 60}s"
+    # If user asked for a specific profile, show just that one
+    if profile != DEFAULT_PROFILE or not TokenStorage.list_profiles():
+        profiles_to_show = [profile]
     else:
-        expiry = f"{secs}s (expiring soon)"
+        profiles_to_show = TokenStorage.list_profiles() or [DEFAULT_PROFILE]
 
-    console.print(f"[green]✓[/green] Logged in to [bold]{st['server']}[/bold]")
-    console.print(f"  Client ID:      {st['client_id']}")
-    console.print(f"  Access token:   expires in {expiry}")
-    console.print(
-        f"  Refresh token:  {'yes' if st['has_refresh_token'] else '[yellow]no[/yellow]'}"
-    )
+    for prof in profiles_to_show:
+        pa = PanoptoAuth(profile=prof)
+        st = pa.status()
+
+        if not st["logged_in"]:
+            console.print(f"[yellow]Profile '{prof}':[/yellow] not logged in")
+            console.print(f"  Run: [cyan]panopto-downloader --profile {prof} auth login[/cyan]")
+        else:
+            secs: int = st["token_expires_in_seconds"]  # type: ignore[assignment]
+            if secs > 3600:
+                expiry = f"{secs // 3600}h {(secs % 3600) // 60}m"
+            elif secs > 60:
+                expiry = f"{secs // 60}m {secs % 60}s"
+            else:
+                expiry = f"{secs}s (expiring soon)"
+
+            console.print(f"[green]✓[/green] Profile [bold]{prof}[/bold] → [bold]{st['server']}[/bold]")
+            console.print(f"  Client ID:      {st['client_id']}")
+            console.print(f"  Access token:   expires in {expiry}")
+            console.print(
+                f"  Refresh token:  {'yes' if st['has_refresh_token'] else '[yellow]no[/yellow]'}"
+            )
+        console.print()
+
+
+@auth.command("list-profiles", context_settings=CONTEXT_SETTINGS)
+def auth_list_profiles() -> None:
+    """List all saved authentication profiles."""
+    print_banner()
+    profiles = TokenStorage.list_profiles()
+    if not profiles:
+        console.print("[yellow]No profiles found.[/yellow]")
+        console.print("Run: [cyan]panopto-downloader auth login[/cyan]")
+        return
+    console.print(f"[bold]Saved profiles ({len(profiles)}):[/bold]\n")
+    for prof in profiles:
+        pa = PanoptoAuth(profile=prof)
+        st = pa.status()
+        if st["logged_in"]:
+            console.print(f"  [green]●[/green] [bold]{prof}[/bold] → {st['server']}")
+        else:
+            console.print(f"  [yellow]○[/yellow] [bold]{prof}[/bold] (token expired)")
 
 
 @auth.command("export-cookies", context_settings=CONTEXT_SETTINGS)
@@ -615,9 +670,10 @@ def auth_status() -> None:
     "--output", "-o",
     type=click.Path(path_type=Path),
     default=None,
-    help="Output path (default: ~/.config/panopto-downloader/cookies.txt)",
+    help="Output path (default: ~/.config/panopto-downloader/cookies-<profile>.txt)",
 )
-def auth_export_cookies(browser: str, output: Path | None) -> None:
+@click.pass_context
+def auth_export_cookies(ctx: click.Context, browser: str, output: Path | None) -> None:
     """Export browser cookies to a file for reliable offline use.
 
     \b
@@ -634,10 +690,12 @@ def auth_export_cookies(browser: str, output: Path | None) -> None:
 
     print_banner()
 
-    dest = output or Path("~/.config/panopto-downloader/cookies.txt").expanduser()
+    profile = ctx.obj.get("profile", DEFAULT_PROFILE) if ctx.obj else DEFAULT_PROFILE
+    default_cookies = Path(f"~/.config/panopto-downloader/cookies-{profile}.txt").expanduser()
+    dest = output or default_cookies
     dest.parent.mkdir(parents=True, exist_ok=True)
 
-    pa = PanoptoAuth()
+    pa = PanoptoAuth(profile=profile)
     server = pa.get_server() if pa.is_logged_in() else DEFAULT_SERVER
 
     console.print(f"\n[bold]Exporting cookies from {browser}…[/bold]")
@@ -674,15 +732,17 @@ def auth_export_cookies(browser: str, output: Path | None) -> None:
 
 
 @auth.command("logout", context_settings=CONTEXT_SETTINGS)
-def auth_logout() -> None:
-    """Delete stored tokens."""
+@click.pass_context
+def auth_logout(ctx: click.Context) -> None:
+    """Delete stored tokens for a profile."""
     print_banner()
-    pa = PanoptoAuth()
+    profile = ctx.obj.get("profile", DEFAULT_PROFILE) if ctx.obj else DEFAULT_PROFILE
+    pa = PanoptoAuth(profile=profile)
     if not pa.is_logged_in():
-        console.print("[yellow]Not logged in — nothing to clear.[/yellow]")
+        console.print(f"[yellow]Profile '{profile}' is not logged in — nothing to clear.[/yellow]")
         return
     pa.logout()
-    console.print("[green]✓[/green] Logged out. Tokens deleted.")
+    console.print(f"[green]✓[/green] Profile [bold]{profile}[/bold] logged out. Tokens deleted.")
 
 
 # ---------------------------------------------------------------------------
@@ -760,10 +820,11 @@ def browse(
 
     print_banner()
 
-    pa = PanoptoAuth()
+    profile = ctx.obj.get("profile", DEFAULT_PROFILE) if ctx.obj else DEFAULT_PROFILE
+    pa = PanoptoAuth(profile=profile)
     if not pa.is_logged_in():
         raise click.ClickException(
-            "Not logged in. Run: panopto-downloader auth login --client-id YOUR_ID"
+            f"Not logged in. Run: panopto-downloader --profile {profile} auth login --client-id YOUR_ID"
         )
 
     try:
@@ -1210,10 +1271,11 @@ def batch(
 
     print_banner()
 
-    pa = PanoptoAuth()
+    profile = ctx.obj.get("profile", DEFAULT_PROFILE) if ctx.obj else DEFAULT_PROFILE
+    pa = PanoptoAuth(profile=profile)
     if not pa.is_logged_in():
         raise click.ClickException(
-            "Not logged in. Run: panopto-downloader auth login"
+            f"Not logged in. Run: panopto-downloader --profile {profile} auth login"
         )
 
     # Load courses YAML
@@ -1437,10 +1499,11 @@ def discover(
 
     print_banner()
 
-    pa = PanoptoAuth()
+    profile = ctx.obj.get("profile", DEFAULT_PROFILE) if ctx.obj else DEFAULT_PROFILE
+    pa = PanoptoAuth(profile=profile)
     if not pa.is_logged_in():
         raise click.ClickException(
-            "Not logged in. Run: panopto-downloader auth login"
+            f"Not logged in. Run: panopto-downloader --profile {profile} auth login"
         )
 
     # Load known search terms from courses.yaml for comparison

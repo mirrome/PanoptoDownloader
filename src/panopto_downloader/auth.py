@@ -3,7 +3,12 @@
 Credentials are read from a .env file (project root or CWD) or from
 environment variables (PANOPTO_SERVER, PANOPTO_CLIENT_ID,
 PANOPTO_CLIENT_SECRET).  Tokens are persisted at
-~/.config/panopto-downloader/tokens.json and refreshed automatically.
+~/.config/panopto-downloader/tokens-<profile>.json and refreshed automatically.
+
+Profiles let you stay logged in to multiple Panopto instances simultaneously:
+    panopto-downloader --profile sloan auth login
+    panopto-downloader --profile eecs  auth login --server mit.hosted.panopto.com ...
+    panopto-downloader --profile eecs  discover
 """
 
 import base64
@@ -23,7 +28,18 @@ import requests
 REDIRECT_PORT = 9127
 REDIRECT_URI = f"http://localhost:{REDIRECT_PORT}/redirect"
 SCOPES = "openid api offline_access"
-TOKEN_FILE = Path("~/.config/panopto-downloader/tokens.json").expanduser()
+TOKEN_DIR = Path("~/.config/panopto-downloader").expanduser()
+DEFAULT_PROFILE = "default"
+
+
+def token_file_for_profile(profile: str) -> Path:
+    """Return the token file path for the given profile name."""
+    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in profile)
+    return TOKEN_DIR / f"tokens-{safe}.json"
+
+
+# Keep the old default path as an alias so existing tokens aren't lost
+TOKEN_FILE = token_file_for_profile(DEFAULT_PROFILE)
 
 # ---------------------------------------------------------------------------
 # .env loader — no third-party dependency required
@@ -77,10 +93,11 @@ class AuthError(Exception):
 
 
 class TokenStorage:
-    """Reads and writes OAuth tokens to disk."""
+    """Reads and writes OAuth tokens to disk, one file per profile."""
 
-    def __init__(self, path: Path = TOKEN_FILE) -> None:
-        self.path = path
+    def __init__(self, profile: str = DEFAULT_PROFILE) -> None:
+        self.profile = profile
+        self.path = token_file_for_profile(profile)
 
     def save(self, data: dict[str, Any]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -98,18 +115,35 @@ class TokenStorage:
         if self.path.exists():
             self.path.unlink()
 
+    @staticmethod
+    def list_profiles() -> list[str]:
+        """Return all profile names that have a saved token file."""
+        if not TOKEN_DIR.exists():
+            return []
+        profiles = []
+        for f in sorted(TOKEN_DIR.glob("tokens-*.json")):
+            name = f.stem[len("tokens-"):]  # strip "tokens-" prefix
+            profiles.append(name)
+        return profiles
+
 
 class PanoptoAuth:
     """OAuth2 PKCE authentication client for Panopto.
 
     Typical usage:
-        auth = PanoptoAuth()
-        auth.login("mitsloan.hosted.panopto.com", "your-client-id")
-        token = auth.get_access_token()   # auto-refreshes
+        auth = PanoptoAuth()                        # default profile
+        auth = PanoptoAuth(profile="eecs")          # named profile
+        auth.login("mit.hosted.panopto.com", "id")
+        token = auth.get_access_token()             # auto-refreshes
     """
 
-    def __init__(self, storage: TokenStorage | None = None) -> None:
-        self.storage = storage or TokenStorage()
+    def __init__(
+        self,
+        storage: TokenStorage | None = None,
+        profile: str = DEFAULT_PROFILE,
+    ) -> None:
+        self.storage = storage or TokenStorage(profile=profile)
+        self.profile = self.storage.profile
         self._token_data: dict[str, Any] | None = None
 
     # ------------------------------------------------------------------
@@ -333,7 +367,8 @@ class PanoptoAuth:
         """Use the refresh token to obtain a new access token."""
         data = self._token_data
         if not data or "refresh_token" not in data:
-            raise AuthError("Session expired. Run: panopto-downloader auth login")
+            profile_flag = f" --profile {self.profile}" if self.profile != DEFAULT_PROFILE else ""
+            raise AuthError(f"Session expired. Run: panopto-downloader{profile_flag} auth login")
 
         server = data["server"]
         client_id = data["client_id"]
@@ -373,7 +408,8 @@ class PanoptoAuth:
             self._token_data = self.storage.load()
 
         if not self._token_data or "access_token" not in self._token_data:
-            raise AuthError("Not logged in. Run: panopto-downloader auth login")
+            profile_flag = f" --profile {self.profile}" if self.profile != DEFAULT_PROFILE else ""
+            raise AuthError(f"Not logged in. Run: panopto-downloader{profile_flag} auth login")
 
         issued_at = self._token_data.get("issued_at", 0.0)
         expires_in = self._token_data.get("expires_in", 3600)
