@@ -787,7 +787,9 @@ def auth_logout(ctx: click.Context) -> None:
     is_flag=True,
     help="Show what would be downloaded without downloading",
 )
+@click.pass_context
 def browse(
+    ctx: click.Context,
     folder_id: str | None,
     search_query: str | None,
     folder_search: str | None,
@@ -1239,7 +1241,9 @@ def _interactive_browse(api: Any, search_limit: int = 250) -> list[Any]:
     default=None,
     help="Comma-separated list of search terms to process (e.g. '15.720,15.707')",
 )
+@click.pass_context
 def batch(
+    ctx: click.Context,
     courses_file: Path,
     output_dir: Path | None,
     all_streams: bool,
@@ -1472,7 +1476,9 @@ def _safe_filename(name: str) -> str:
     show_default=True,
     help="Comma-separated search queries to run against Panopto folders",
 )
+@click.pass_context
 def discover(
+    ctx: click.Context,
     courses_file: Path,
     show_all: bool,
     queries: str,
