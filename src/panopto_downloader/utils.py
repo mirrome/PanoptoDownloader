@@ -35,8 +35,11 @@ def sanitize_filename(name: str, max_length: int = 200) -> str:
     name = unicodedata.normalize("NFKD", name)
     name = name.encode("ascii", "ignore").decode("ascii")
 
-    # Replace problematic characters (but keep dots for course numbers like 15.724)
-    name = re.sub(r'[<>:"/\\|?*]', "_", name)
+    # Replace path separators with hyphens so dates like "2/3/2026" become
+    # "2-3-2026" rather than being collapsed into "232026" (a path component).
+    # Other unsafe chars are replaced with underscores.
+    name = re.sub(r'[/\\]', "-", name)
+    name = re.sub(r'[<>:"|?*]', "_", name)
     name = re.sub(r"\s+", "_", name)
     name = re.sub(r"_+", "_", name)
     name = name.strip("_ ")  # Only strip underscores and spaces, NOT dots

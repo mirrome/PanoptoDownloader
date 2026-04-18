@@ -1443,9 +1443,13 @@ def batch(
 
 
 def _safe_filename(name: str) -> str:
-    """Strip characters that are unsafe in file/directory names."""
+    """Replace characters that are unsafe in file/directory names."""
     import re
-    name = re.sub(r'[<>:"/\\|?*]', "", name)
+    # Replace path separators and other unsafe chars with hyphens so that
+    # dates like "2/3/2026" become "2-3-2026" rather than being deleted
+    # (deletion turns "2/3/2026" into "232026" which macOS reads as a path).
+    name = re.sub(r'[/\\]', "-", name)
+    name = re.sub(r'[<>:"|?*]', "", name)
     name = re.sub(r"\s+", " ", name).strip()
     return name[:200] or "session"
 
