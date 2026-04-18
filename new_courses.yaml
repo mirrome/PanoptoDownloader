@@ -1,0 +1,41 @@
+# MIT EMBA — New / Previously Undiscovered Courses
+# Discovered via: panopto-downloader discover
+#
+# Usage:
+#   panopto-downloader batch -c new_courses.yaml --all-streams --dry-run
+#   panopto-downloader batch -c new_courses.yaml --all-streams
+
+output_path: "/Volumes/NAS/MIT EMBA/MIT_Lectures"
+
+courses:
+  # ── Spring 2024-2025 ────────────────────────────────────────────────────
+  - search: "15.401"
+    folder: "15.401 Managerial Finance"
+
+  - search: "15.S20"
+    folder: "15.S20 SSIM: Global Business of Quantum Computing (GBQC)"
+
+  - search: "SP25-15.016"
+    folder: "15.016 Climate and Energy in the Global Economy"
+
+  # ── Fall 2025-2026 ──────────────────────────────────────────────────────
+  # Note: many of these overlap with courses.yaml (same course number,
+  # new term). The search will find the new-term folders automatically.
+  - search: "15.060"
+    folder: "15.060 Data, Models, and Decisions"
+
+  # ── Spring 2025-2026 ────────────────────────────────────────────────────
+  - search: "15.383"
+    folder: "15.383 Corporate Boards: Functions and Responsibilities"
+
+  - search: "15.573"
+    folder: "15.573 Generative AI for Managers"
+
+  - search: "15.076"
+    folder: "15.076 Analytics for a Better World"
+
+  - search: "15.C51"
+    folder: "15.C51 Modeling with Machine Learning: Financial Technology"
+
+  - search: "15.S04"
+    folder: "15.S04 Special Seminar in Management"

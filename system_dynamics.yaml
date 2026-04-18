@@ -1,0 +1,111 @@
+# System Dynamics Course - Panopto Downloader Config
+# =====================================================
+#
+# HOW TO USE:
+# 1. Open each lecture in Chrome and copy the URL
+# 2. Paste the URL in the 'url' field below
+# 3. Run: panopto-downloader -c system_dynamics.yaml download
+#
+# TIP: Close Chrome before running for reliable cookie access
+
+browser: chrome
+cookies_file: cookies_mitsloan.txt
+# Where to save videos
+download_path: ~/Videos/MIT_Lectures/System_Dynamics
+
+# Output naming: Course_Title_Date.mp4
+naming:
+  format: "{course}_{title}_{date}"
+  date_format: "%Y-%m-%d"
+  create_lecture_folders: true  # Creates a folder per lecture named after the title
+
+# Download 4 videos at a time (change to 1 for sequential, or adjust as needed)
+download:
+  parallel_workers: 4
+  download_all_streams: true  # Download composed, camera, and slides for each lecture
+
+# Skip already downloaded files
+resume:
+  check_existing: true
+
+# Retry failed downloads 3 times
+retry:
+  enabled: true
+  max_attempts: 3
+
+# ============================================================================
+# 15.736 - Introduction to System Dynamics (Prof. John Sterman)
+# Spring/Summer 2025 - MIT Sloan EMBA
+# Section B
+# ============================================================================
+
+lectures:
+  # Lecture 1
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=b4eca2f0-55ee-4282-b046-b2c801350242"
+    title: "Mapping and Modeling Dynamic Systems"
+    course: "15.736 - System Dynamics"
+    date: 2025-04-25
+    instructor: "John Sterman"
+
+  # Lecture 2
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=34e9c4cf-64e7-4378-9380-b2c80139cadd"
+    title: "Tools for System Dynamics: Problem Definition and Causal Mapping"
+    course: "15.736 - System Dynamics"
+    date: 2025-04-26
+    instructor: "John Sterman"
+
+  # Lecture 3
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=7663b445-7ae0-4187-8eb4-b2d8013e2bc7"
+    title: "System Dynamics in Action"
+    course: "15.736 - System Dynamics"
+    date: 2025-05-16
+    instructor: "John Sterman"
+
+  # Lecture 4
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=161b228a-987d-4590-bea3-b2f1013b9de1"
+    title: "Understanding Stocks and Flows"
+    course: "15.736 - System Dynamics"
+    date: 2025-06-06
+    instructor: "John Sterman"
+
+  # Lecture 5 - June 27, 2025 - Growth Dynamics and Competition in Platform Markets (Sessions 7-8)
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=e4c27d75-093d-4c2a-8a82-b305013fa792"
+    title: "Growth Dynamics and Competition in Platform Markets"
+    course: "15.736 - System Dynamics"
+    date: 2025-06-27
+    instructor: "John Sterman"
+
+  # Lecture 6 - June 28, 2025 - Meet LEW: Understanding the Dynamics of Project Management (Sessions 9-10)
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=35bd07db-1a1f-4336-bba9-b3050141cb68"
+    title: "Meet LEW - Understanding the Dynamics of Project Management"
+    course: "15.736 - System Dynamics"
+    date: 2025-06-28
+    instructor: "John Sterman"
+
+  # Lecture 7 - July 19, 2025 - Organizational Capabilities and Pathologies (Sessions 11-12)
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=60f3222b-7cf2-4443-aba8-b31b0116ee05"
+    title: "Organizational Capabilities and Pathologies"
+    course: "15.736 - System Dynamics"
+    date: 2025-07-19
+    instructor: "John Sterman"
+
+  # Lecture 8 - August 8, 2025 - Linking Capabilities and Strategy (Sessions 13-14)
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=ad336fbb-d88a-4c62-afa3-b33301794117"
+    title: "Linking Capabilities and Strategy"
+    course: "15.736 - System Dynamics"
+    date: 2025-08-08
+    instructor: "John Sterman"
+
+  # Lecture 9 - August 22, 2025 - Success in a Sustainable World (Sessions 15-16)
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=49213e9b-eded-41ed-b3b5-b34000dbdbd9"
+    title: "Success in a Sustainable World"
+    course: "15.736 - System Dynamics"
+    date: 2025-08-22
+    instructor: "John Sterman"
+
+  # Lecture 10 - August 23, 2025 - Implementing and Sustaining Change in a Dynamic World (Sessions 17-18)
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=b1802997-ff7f-4122-9c07-b34000d8bfb8"
+    title: "Implementing and Sustaining Change in a Dynamic World"
+    course: "15.736 - System Dynamics"
+    date: 2025-08-23
+    instructor: "John Sterman"

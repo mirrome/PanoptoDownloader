@@ -1,0 +1,104 @@
+# Operations Management Course - Panopto Downloader Config
+# =====================================================
+#
+# HOW TO USE:
+# 1. Open each lecture in Chrome and copy the URL
+# 2. Paste the URL in the 'url' field below
+# 3. Run: panopto-downloader -c operations_management.yaml download
+#
+# TIP: Close Chrome before running for reliable cookie access
+
+browser: chrome
+cookies_file: cookies_mitsloan.txt
+
+# Where to save videos
+download_path: ~/Videos/MIT_Lectures/Operations_Management
+
+# Output naming: Course_Title_Date.mp4
+naming:
+  format: "{course}_{title}_{date}"
+  date_format: "%Y-%m-%d"
+  create_lecture_folders: true  # Creates a folder per lecture named after the title
+
+# Download 4 videos at a time (change to 1 for sequential, or adjust as needed)
+download:
+  parallel_workers: 4
+  download_all_streams: true  # Download composed, camera, and slides for each lecture
+
+# Skip already downloaded files
+resume:
+  check_existing: true
+
+# Retry failed downloads 3 times
+retry:
+  enabled: true
+  max_attempts: 3
+
+# ============================================================================
+# 15.734 - Operations Management (Prof. Retsef Levi & Prof. Karen Zheng)
+# Summer 2025 - MIT Sloan EMBA
+# ============================================================================
+
+lectures:
+  # Lecture 1
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=f75af609-b01f-4c2f-af63-b2d8013c67bb"
+    title: "Capacity Analysis 1"
+    course: "15.734 - Operations Management"
+    date: 2025-05-16
+    instructor: "Retsef Levi"
+
+  # Lecture 2
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=42f2575a-1fc4-4f5c-acea-b2d8013c6815"
+    title: "System Re-Engineering, Innovation, and Quality Control"
+    course: "15.734 - Operations Management"
+    date: 2025-05-17
+    instructor: "Retsef Levi"
+
+  # Lecture 3
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=7e6d463d-37d9-4a19-b1ef-b2f101386d68"
+    title: "Capacity Analysis 2"
+    course: "15.734 - Operations Management"
+    date: 2025-06-06
+    instructor: "Retsef Levi"
+
+  # Lecture 4
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=eff49155-c90a-4e48-82de-b2f1013a85a7"
+    title: "Intelligent Operations"
+    course: "15.734 - Operations Management"
+    date: 2025-06-07
+    instructor: "Retsef Levi"
+
+  # Lecture 5
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=c2ee2497-177d-4e6e-9abb-b31b0109b7f0"
+    title: "Inventory Control 1"
+    course: "15.734 - Operations Management"
+    date: 2025-07-18
+    instructor: "Karen Zheng"
+
+  # Lecture 6
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=5d8da476-535c-49d3-8dda-b335002a2c94"
+    title: "Inventory Control 2"
+    course: "15.734 - Operations Management"
+    date: 2025-08-09
+    instructor: "Retsef Levi"
+
+  # Lecture 7
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=2cf339c4-e3fa-481c-b051-b3400057eda5"
+    title: "Supply Chain Resilience"
+    course: "15.734 - Operations Management"
+    date: 2025-08-22
+    instructor: "Retsef Levi"
+
+  # Lecture 8
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=d4fff52c-620a-46db-94f8-b34000d9a635"
+    title: "Revenue Management"
+    course: "15.734 - Operations Management"
+    date: 2025-08-23
+    instructor: "Retsef Levi"
+
+  # Lecture 9
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=09e795f6-2be1-4235-9f78-b35400c960e8"
+    title: "Intelligent Operations 3"
+    course: "15.734 - Operations Management"
+    date: 2025-09-13
+    instructor: "Retsef Levi"

@@ -1248,6 +1248,18 @@ def batch(
     )
 
     api = PanoptoRestAPI(pa)
+
+    # Validate the token is actually usable — is_logged_in() only checks disk.
+    # Use folder search rather than users/self (some instances don't support it).
+    try:
+        api.list_root_folders(max_results=1)
+    except (AuthError, PanoptoAPIError) as exc:
+        raise click.ClickException(
+            f"Authentication failed — your session has likely expired.\n"
+            f"  Error: {exc}\n"
+            f"  Fix:   panopto-downloader auth login"
+        ) from exc
+
     try:
         config = load_config(None)
     except ConfigError:
@@ -1370,6 +1382,192 @@ def _safe_filename(name: str) -> str:
     name = re.sub(r'[<>:"/\\|?*]', "", name)
     name = re.sub(r"\s+", " ", name).strip()
     return name[:200] or "session"
+
+
+# ---------------------------------------------------------------------------
+# discover command — exhaustive folder scan
+# ---------------------------------------------------------------------------
+
+
+@main.command("discover", context_settings=CONTEXT_SETTINGS)
+@click.option(
+    "--courses-file", "-c",
+    type=click.Path(path_type=Path),
+    default=Path("courses.yaml"),
+    show_default=True,
+    help="Existing courses.yaml to compare against (shows NEW folders only)",
+)
+@click.option(
+    "--all/--new-only", "-a/-n",
+    "show_all",
+    default=False,
+    show_default=True,
+    help="Show all discovered folders (default: only folders not in courses.yaml)",
+)
+@click.option(
+    "--queries", "-q",
+    default="EMBA,15.,6.,18.,Spring Term,Fall Term,IAP",
+    show_default=True,
+    help="Comma-separated search queries to run against Panopto folders",
+)
+def discover(
+    courses_file: Path,
+    show_all: bool,
+    queries: str,
+) -> None:
+    """Discover all Panopto course folders accessible to your account.
+
+    \b
+    Panopto's folder tree is not navigable for viewer-role accounts, so this
+    command runs broad keyword searches instead and deduplicates the results.
+    Any folder not already covered by courses.yaml is flagged as NEW.
+
+    \b
+    EXAMPLES:
+      panopto-downloader discover
+      panopto-downloader discover --all                    # show known + new
+      panopto-downloader discover --queries "EMBA,6.,18."  # custom queries
+
+    \b
+    REQUIREMENTS:
+      Run 'panopto-downloader auth login' first.
+    """
+    import yaml  # type: ignore[import]
+    from .panopto_api import PanoptoAPIError, PanoptoFolder, PanoptoRestAPI
+
+    print_banner()
+
+    pa = PanoptoAuth()
+    if not pa.is_logged_in():
+        raise click.ClickException(
+            "Not logged in. Run: panopto-downloader auth login"
+        )
+
+    # Load known search terms from courses.yaml for comparison
+    known_terms: set[str] = set()
+    known_folders_in_yaml: set[str] = set()
+    if courses_file.exists():
+        try:
+            with open(courses_file) as f:
+                yaml_data = yaml.safe_load(f) or {}
+            for course in yaml_data.get("courses", []):
+                term = course.get("search", "").strip().lower()
+                folder = course.get("folder", "").strip().lower()
+                if term:
+                    known_terms.add(term)
+                if folder:
+                    known_folders_in_yaml.add(folder)
+            console.print(
+                f"[dim]Loaded {len(known_terms)} known course search terms from {courses_file}[/dim]"
+            )
+        except Exception as exc:
+            console.print(f"[yellow]Could not load {courses_file}: {exc}[/yellow]")
+    else:
+        console.print(f"[dim]{courses_file} not found — will show all discovered folders[/dim]")
+
+    api = PanoptoRestAPI(pa)
+
+    # Validate token is actually usable (is_logged_in only checks disk).
+    # users/self is unsupported on some instances; use folders/search instead.
+    try:
+        api.search_folders("test", max_results=1)
+    except (AuthError, PanoptoAPIError) as exc:
+        raise click.ClickException(
+            f"Authentication failed — your session has likely expired.\n"
+            f"  Error: {exc}\n"
+            f"  Fix:   panopto-downloader auth login"
+        ) from exc
+
+    search_queries = [q.strip() for q in queries.split(",") if q.strip()]
+    console.print(
+        f"\n[bold]Searching Panopto for accessible course folders[/bold]\n"
+        f"[dim]Queries: {', '.join(repr(q) for q in search_queries)}[/dim]\n"
+    )
+
+    # Run each search query and collect unique folders by ID
+    discovered: dict[str, PanoptoFolder] = {}  # id -> folder
+
+    try:
+        for q in search_queries:
+            with console.status(f"[bold green]Searching '{q}'…[/bold green]"):
+                try:
+                    folders = api.search_folders(q, max_results=200)
+                    new_count = 0
+                    for f in folders:
+                        if f.id not in discovered:
+                            discovered[f.id] = f
+                            new_count += 1
+                    console.print(
+                        f"  [dim]'{q}': {len(folders)} result(s), {new_count} new unique folders[/dim]"
+                    )
+                except (AuthError, PanoptoAPIError) as exc:
+                    console.print(f"  [yellow]⚠ Search '{q}' failed: {exc}[/yellow]")
+    except (AuthError, PanoptoAPIError) as exc:
+        raise click.ClickException(
+            f"Session expired during search.\n"
+            f"  Error: {exc}\n"
+            f"  Fix:   panopto-downloader auth login"
+        ) from exc
+
+    if not discovered:
+        console.print("\n[yellow]No folders found.[/yellow]")
+        return
+
+    console.print(f"\n[dim]Total unique folders found: {len(discovered)}[/dim]\n")
+
+    def _is_known(folder: PanoptoFolder) -> bool:
+        name_lower = folder.name.lower()
+        return any(term in name_lower for term in known_terms)
+
+    all_folders = sorted(discovered.values(), key=lambda f: f.name)
+    new_folders = [f for f in all_folders if not _is_known(f)]
+    known_folder_list = [f for f in all_folders if _is_known(f)]
+
+    folders_to_show = all_folders if show_all else new_folders
+
+    if not folders_to_show:
+        console.print(
+            f"[green]✓ All {len(all_folders)} discovered folder(s) are already covered by {courses_file}[/green]"
+        )
+        return
+
+    table = Table(
+        show_header=True,
+        header_style="bold blue",
+        box=None,
+        padding=(0, 1),
+    )
+    table.add_column("Folder Name", min_width=50)
+    table.add_column("Status", justify="left")
+
+    for folder in folders_to_show:
+        status = (
+            "[dim]already covered[/dim]"
+            if _is_known(folder)
+            else "[green bold]NEW[/green bold]"
+        )
+        table.add_row(folder.name, status)
+
+    console.print(table)
+    console.print()
+
+    if not show_all:
+        console.print(
+            f"[bold]{len(new_folders)} new folder(s)[/bold] not covered by {courses_file}  "
+            f"[dim]({len(known_folder_list)} already known)[/dim]"
+        )
+    else:
+        console.print(
+            f"[bold]{len(all_folders)} total folder(s)[/bold]  "
+            f"[dim]({len(new_folders)} new, {len(known_folder_list)} already covered)[/dim]"
+        )
+
+    if new_folders:
+        console.print(
+            "\n[dim]To add a new course, append an entry to courses.yaml:[/dim]\n"
+            "[dim]  - search: \"<folder name or course number>\"[/dim]\n"
+            "[dim]    folder: \"<human-readable name>\"[/dim]"
+        )
 
 
 if __name__ == "__main__":

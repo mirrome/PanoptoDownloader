@@ -1,0 +1,53 @@
+# Hands-on Deep Learning Course - Panopto Downloader Config
+# =====================================================
+#
+# HOW TO USE:
+# 1. Open each lecture in Chrome and copy the URL
+# 2. Paste the URL in the 'url' field below
+# 3. Run: panopto-downloader -c hands_on_deep_learning.yaml download
+#
+# TIP: Close Chrome before running for reliable cookie access
+
+browser: chrome
+
+# Where to save videos
+download_path: ~/Videos/MIT_Lectures/Hands_on_Deep_Learning
+
+# Output naming: Course_Title_Date.mp4
+naming:
+  format: "{course}_{title}_{date}"
+  date_format: "%Y-%m-%d"
+  create_lecture_folders: true  # Creates a folder per lecture named after the title
+
+# Download 4 videos at a time (change to 1 for sequential, or adjust as needed)
+download:
+  parallel_workers: 4
+  download_all_streams: true  # Download composed, camera, and slides for each lecture
+
+# Skip already downloaded files
+resume:
+  check_existing: true
+
+# Retry failed downloads 3 times
+retry:
+  enabled: true
+  max_attempts: 3
+
+# ============================================================================
+# 15.773 - Hands-on Deep Learning (Prof. Rama Ramakrishnan)
+# ============================================================================
+
+lectures:
+  # Lecture 1 (Feb 2)
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=6100652c-dbae-406c-a1ee-b3db0048ceaf"
+    title: "AI Overview and Intro to Neural Networks"
+    course: "15.773 - Hands-on Deep Learning"
+    date: 2026-02-02
+    instructor: "Rama Ramakrishnan"
+
+  # Lecture 2 (Feb 4)
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=b2e683b1-c3b5-4ab9-a0c2-b3db0048cf0c"
+    title: "Training Deep Neural Networks"
+    course: "15.773 - Hands-on Deep Learning"
+    date: 2026-02-04
+    instructor: "Rama Ramakrishnan"

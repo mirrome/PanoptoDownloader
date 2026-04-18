@@ -1,0 +1,90 @@
+# Competitive Strategy Course - Panopto Downloader Config
+# =====================================================
+#
+# HOW TO USE:
+# 1. Open each lecture in Chrome and copy the URL
+# 2. Paste the URL in the 'url' field below
+# 3. Run: panopto-downloader -c competitive_strategy.yaml download
+#
+# TIP: Close Chrome before running for reliable cookie access
+
+browser: chrome
+cookies_file: cookies_mitsloan.txt
+
+# Where to save videos
+download_path: ~/Videos/MIT_Lectures/Competitive_Strategy
+
+# Output naming: Course_Title_Date.mp4
+naming:
+  format: "{course}_{title}_{date}"
+  date_format: "%Y-%m-%d"
+  create_lecture_folders: true  # Creates a folder per lecture named after the title
+
+# Download 4 videos at a time (change to 1 for sequential, or adjust as needed)
+download:
+  parallel_workers: 4
+  download_all_streams: true  # Download composed, camera, and slides for each lecture
+
+# Skip already downloaded files
+resume:
+  check_existing: true
+
+# Retry failed downloads 3 times
+retry:
+  enabled: true
+  max_attempts: 3
+
+# ============================================================================
+# 15.714 - Competitive Strategy (Prof. Danielle Li)
+# Spring 2025 - MIT Sloan EMBA
+# ============================================================================
+
+lectures:
+  # Class 1 - January 24, 2025 - Value Creation and Value Capture
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=48fcdd04-9e25-4778-bd1d-b26d0140d097"
+    title: "Value Creation and Value Capture"
+    course: "15.714 - Competitive Strategy"
+    date: 2025-01-24
+    instructor: "Danielle Li"
+
+  # Class 2 - January 25, 2025 - Industry Profitability: The Five Forces Framework / Sustaining Competitive Advantage
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=ca7b4207-89fa-4f83-a500-b26d0140d102"
+    title: "Industry Profitability and Sustaining Competitive Advantage"
+    course: "15.714 - Competitive Strategy"
+    date: 2025-01-25
+    instructor: "Danielle Li"
+
+  # Class 3 - February 7-8, 2025 - Putting Competitive Advantage to Work
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=590b7135-bc46-49ca-a793-b27c0013e514"
+    title: "Putting Competitive Advantage to Work"
+    course: "15.714 - Competitive Strategy"
+    date: 2025-02-07
+    instructor: "Danielle Li"
+
+  # Class 4 - February 21-22, 2025 - Game Theory and Strategy
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=fa4b7203-bddc-4d0c-8669-b2890150411f"
+    title: "Game Theory and Strategy"
+    course: "15.714 - Competitive Strategy"
+    date: 2025-02-21
+    instructor: "Danielle Li"
+
+  # Class 5 - March 16, 2025 - Thinking Clearly About Disruption
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=3137e60e-1976-4b75-bd42-b29901542e4d"
+    title: "Thinking Clearly About Disruption"
+    course: "15.714 - Competitive Strategy"
+    date: 2025-03-16
+    instructor: "Danielle Li"
+
+  # Class 6 - March 17, 2025 - Platform Strategy
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=8433ef9f-6fb2-4280-bbcf-b2990154303c"
+    title: "Platform Strategy"
+    course: "15.714 - Competitive Strategy"
+    date: 2025-03-17
+    instructor: "Danielle Li"
+
+  # Class 7 - April 4, 2025 - AI Strategy
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=337b2083-079b-4a42-9218-b2ac0138f955"
+    title: "AI Strategy"
+    course: "15.714 - Competitive Strategy"
+    date: 2025-04-04
+    instructor: "Danielle Li"

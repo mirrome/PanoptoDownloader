@@ -1,0 +1,103 @@
+# Organizational Processes Course - Panopto Downloader Config
+# =====================================================
+#
+# HOW TO USE:
+# 1. Open each lecture in Chrome and copy the URL
+# 2. Paste the URL in the 'url' field below
+# 3. Run: panopto-downloader -c organizational_processes.yaml download
+#
+# TIP: Close Chrome before running for reliable cookie access
+
+browser: chrome
+cookies_file: cookies_mitsloan.txt
+
+# Where to save videos
+download_path: ~/Videos/MIT_Lectures/Organizational_Processes
+
+# Output naming: Course_Title_Date.mp4
+naming:
+  format: "{course}_{title}_{date}"
+  date_format: "%Y-%m-%d"
+  create_lecture_folders: true  # Creates a folder per lecture named after the title
+
+# Download 4 videos at a time (change to 1 for sequential, or adjust as needed)
+download:
+  parallel_workers: 4
+  download_all_streams: true  # Download composed, camera, and slides for each lecture
+
+# Skip already downloaded files
+resume:
+  check_existing: true
+
+# Retry failed downloads 3 times
+retry:
+  enabled: true
+  max_attempts: 3
+
+# ============================================================================
+# 15.717 - Organizational Processes (Prof. Roberto M. Fernandez)
+# ============================================================================
+
+lectures:
+  # Lecture 1 - October 22, 2024 - Introduction and Framework for Course
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=c58a3546-0ee1-4449-af02-b20c0184a1bb"
+    title: "Introduction and Framework for Course"
+    course: "15.717 - Organizational Processes"
+    date: 2024-10-22
+    instructor: "Roberto M. Fernandez"
+
+  # Lecture 2 - October 23, 2024 - Leadership and Decision Making
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=29d86be9-153e-4cbe-b421-b20d01688b93"
+    title: "Leadership and Decision Making"
+    course: "15.717 - Organizational Processes"
+    date: 2024-10-23
+    instructor: "Roberto M. Fernandez"
+
+  # Lecture 3 - October 24, 2024 - The Strategic Design of Organizations
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=81938282-f0d6-47ad-880e-b20c01851c91"
+    title: "The Strategic Design of Organizations"
+    course: "15.717 - Organizational Processes"
+    date: 2024-10-24
+    instructor: "Roberto M. Fernandez"
+
+  # Lecture 4 - November 15, 2024 - Cultural Perspectives on Organizations
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=ef97f52d-fd84-4030-9627-b229000477a5"
+    title: "Cultural Perspectives on Organizations"
+    course: "15.717 - Organizational Processes"
+    date: 2024-11-15
+    instructor: "Roberto M. Fernandez"
+
+  # Lecture 5 - November 16, 2024 - Political Perspectives on Organizations
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=319abb6c-fede-4cb4-83f8-b229000477f3"
+    title: "Political Perspectives on Organizations"
+    course: "15.717 - Organizational Processes"
+    date: 2024-11-16
+    instructor: "Roberto M. Fernandez"
+
+  # Lecture 6 - December 6, 2024 - Putting it All Together: Designing for Innovation
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=0945cc3e-72f7-4db7-b771-b23d00063c64"
+    title: "Putting it All Together: Designing for Innovation"
+    course: "15.717 - Organizational Processes"
+    date: 2024-12-06
+    instructor: "Roberto M. Fernandez"
+
+  # Lecture 7 - December 7, 2024 - Managing on Slippery Slopes
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=1d6d96b2-c722-4e3a-93c8-b23d00063cb1"
+    title: "Managing on Slippery Slopes"
+    course: "15.717 - Organizational Processes"
+    date: 2024-12-07
+    instructor: "Roberto M. Fernandez"
+
+  # Lecture 8 - December 20, 2024 - Implementing Organization Change (The Six-Sigma Simulation)
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=9fbaa4d8-b8e6-4b2e-8f69-b2490183f765"
+    title: "Implementing Organization Change (The Six-Sigma Simulation)"
+    course: "15.717 - Organizational Processes"
+    date: 2024-12-20
+    instructor: "Roberto M. Fernandez"
+
+  # Lecture 9 - December 21, 2024 - Making Change Happen
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=1b5cca96-cf4c-4618-9c80-b2490183f7c8"
+    title: "Making Change Happen"
+    course: "15.717 - Organizational Processes"
+    date: 2024-12-21
+    instructor: "Roberto M. Fernandez"

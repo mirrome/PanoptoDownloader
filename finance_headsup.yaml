@@ -1,0 +1,129 @@
+# Financial Management HeadsUp Videos - Panopto Downloader Config
+# =====================================================
+#
+# HOW TO USE:
+# Run: panopto-downloader -c finance_headsup.yaml download
+#
+# These are supplementary HeadsUp videos for Financial Management
+
+browser: chrome
+cookies_file: cookies_mitsloan.txt
+
+# Where to save videos
+download_path: ~/Videos/MIT_Lectures/Financial_Management/HeadsUp
+
+# Output naming: Title_Date.mp4
+naming:
+  format: "{title}"
+  date_format: "%Y-%m-%d"
+  create_lecture_folders: false
+
+# Download 4 videos at a time
+download:
+  parallel_workers: 4
+  download_all_streams: true  # Download composed, camera, and slides for each video
+
+# Skip already downloaded files
+resume:
+  check_existing: true
+
+# Retry failed downloads 3 times
+retry:
+  enabled: true
+  max_attempts: 3
+
+# ============================================================================
+# Financial Management - HeadsUp Supplementary Videos
+# ============================================================================
+
+lectures:
+  # Capital Budgeting
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=0f2fd1c0-57f4-40fe-b89f-b30c01025b42"
+    title: "Capital Budgeting - HeadsUp"
+    course: "Financial Management"
+    date: 2025-01-01
+    instructor: "Finance Department"
+
+  # Capital Structure
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=d26f9cbb-0115-4211-b3a3-b30c01027c89"
+    title: "Capital Structure - HeadsUp"
+    course: "Financial Management"
+    date: 2025-01-01
+    instructor: "Finance Department"
+
+  # Capital Structure - WACC Proof
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=1e96f69b-bc28-4cc8-9b92-b30c010283ea"
+    title: "Capital Structure WACC Proof - HeadsUp"
+    course: "Financial Management"
+    date: 2025-01-01
+    instructor: "Finance Department"
+
+  # CAPM
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=c8c18e8d-7d54-418c-bf23-b30c01028968"
+    title: "CAPM - HeadsUp"
+    course: "Financial Management"
+    date: 2025-01-01
+    instructor: "Finance Department"
+
+  # Diversification
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=17954296-93d0-401e-aafc-b30c0102a40b"
+    title: "Diversification - HeadsUp"
+    course: "Financial Management"
+    date: 2025-01-01
+    instructor: "Finance Department"
+
+  # Bonds
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=f285204a-a9fc-4a96-a3b9-b30c0102cc20"
+    title: "Bonds - HeadsUp"
+    course: "Financial Management"
+    date: 2025-01-01
+    instructor: "Finance Department"
+
+  # Fixed Income Risks - Short Version
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=2f6e5fcd-1ded-4542-8a54-b30c0102f913"
+    title: "Fixed Income Risks - HeadsUp Short Version"
+    course: "Financial Management"
+    date: 2025-01-01
+    instructor: "Finance Department"
+
+  # Option Payoffs
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=110a3adf-9878-42ea-afa4-b30c01032fa3"
+    title: "Option Payoffs - HeadsUp"
+    course: "Financial Management"
+    date: 2025-01-01
+    instructor: "Finance Department"
+
+  # Real Options
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=b98b8d46-27c4-4f08-94bf-b30c01035120"
+    title: "Real Options - HeadsUp"
+    course: "Financial Management"
+    date: 2025-01-01
+    instructor: "Finance Department"
+
+  # Risk & Returns
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=9c37ebc4-cc35-4f8c-b7d9-b30c010358ae"
+    title: "Risk and Returns - HeadsUp"
+    course: "Financial Management"
+    date: 2025-01-01
+    instructor: "Finance Department"
+
+  # Statistics of Uncertainty
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=5281d9fe-c40c-41db-8a5d-b30c0103667a"
+    title: "Statistics of Uncertainty - HeadsUp"
+    course: "Financial Management"
+    date: 2025-01-01
+    instructor: "Finance Department"
+
+  # Stocks
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=ba1a4f21-98c4-46d5-95a7-b30c01036c9a"
+    title: "Stocks - HeadsUp"
+    course: "Financial Management"
+    date: 2025-01-01
+    instructor: "Finance Department"
+
+  # Option Prices - Black and Scholes
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=1f5a048f-2b16-4770-b2f5-b30c0115933b"
+    title: "Option Prices Black and Scholes - HeadsUp"
+    course: "Financial Management"
+    date: 2025-01-01
+    instructor: "Finance Department"
