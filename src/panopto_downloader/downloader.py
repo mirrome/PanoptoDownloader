@@ -99,11 +99,18 @@ class VideoDownloader:
         self.write_subs = write_subs
         self.auth = auth
 
-    @staticmethod
-    def _exported_cookies_path() -> Path | None:
-        """Return the exported cookies file if it exists and is not empty."""
-        p = Path("~/.config/panopto-downloader/cookies.txt").expanduser()
-        return p if p.exists() and p.stat().st_size > 100 else None
+    def _exported_cookies_path(self) -> Path | None:
+        """Return the exported cookies file for the active auth profile, if it exists."""
+        config_dir = Path("~/.config/panopto-downloader").expanduser()
+        # Prefer the profile-specific file (e.g. cookies-eecs.txt)
+        if self.auth is not None:
+            profile = getattr(self.auth, "profile", "default")
+            profile_path = config_dir / f"cookies-{profile}.txt"
+            if profile_path.exists() and profile_path.stat().st_size > 100:
+                return profile_path
+        # Fall back to the legacy default cookies.txt
+        default_path = config_dir / "cookies.txt"
+        return default_path if default_path.exists() and default_path.stat().st_size > 100 else None
 
     @staticmethod
     def _is_complete(path: Path, min_bytes: int = 1_000_000) -> bool:
