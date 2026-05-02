@@ -1485,14 +1485,15 @@ def _build_session_pattern(safe_name: str):
 def _migrate_existing_assets(
     course_dir: Path, session_dir: Path, safe_name: str
 ) -> int:
-    """Move any pre-existing flat session files into the per-session folder.
+    """Reconcile pre-existing session files with the current canonical name.
 
-    Matches files in the parent course folder against the session's name
-    using a separator-insensitive, digit-flexible regex. This handles
-    legacy filenames that may differ from the current name in date
-    formatting (zero-padding, dashes vs no-dashes, 2- vs 4-digit years).
-    Files are renamed to the current canonical session name during the
-    move so future runs see consistent naming. Returns the count moved.
+    Scans BOTH the parent course folder (flat layout) and the session
+    folder itself (in case files were placed inside earlier with a
+    non-canonical name). Files matching the session's signature are
+    moved into the session folder and renamed to use the current
+    canonical safe_name. Matching is separator- and digit-insensitive
+    so legacy filenames with different date formatting still match.
+    Returns the count of files migrated/renamed.
     """
     if not course_dir.exists():
         return 0
@@ -1500,46 +1501,62 @@ def _migrate_existing_assets(
     pattern = _build_session_pattern(safe_name)
 
     moved = 0
-    for entry in list(course_dir.iterdir()):
-        if not entry.is_file() or entry.parent == session_dir:
-            continue
+    renamed_in_place = 0
+    locations = [course_dir]
+    if session_dir.exists() and session_dir != course_dir:
+        locations.append(session_dir)
 
-        # Build candidate signature alongside an index map back to the
-        # original filename so we know where the session prefix ends.
-        sig_chars: list[str] = []
-        orig_pos: list[int] = []
-        for i, ch in enumerate(entry.name):
-            if ch in "-_ ":
+    for location in locations:
+        for entry in list(location.iterdir()):
+            if not entry.is_file():
                 continue
-            sig_chars.append(ch.lower())
-            orig_pos.append(i)
-        candidate_sig = "".join(sig_chars)
 
-        m = pattern.match(candidate_sig)
-        if not m or m.end() == 0:
-            continue
+            # Build candidate signature alongside an index map back to the
+            # original filename so we know where the session prefix ends.
+            sig_chars: list[str] = []
+            orig_pos: list[int] = []
+            for i, ch in enumerate(entry.name):
+                if ch in "-_ ":
+                    continue
+                sig_chars.append(ch.lower())
+                orig_pos.append(i)
+            candidate_sig = "".join(sig_chars)
 
-        end_pos = orig_pos[m.end() - 1]
-        # Asset suffix must follow with `_` so we don't mis-match a longer
-        # session whose name happens to start with this one's signature.
-        if end_pos + 1 >= len(entry.name) or entry.name[end_pos + 1] != "_":
-            continue
+            m = pattern.match(candidate_sig)
+            if not m or m.end() == 0:
+                continue
 
-        asset_part = entry.name[end_pos + 1:]
-        target = session_dir / (safe_name + asset_part)
-        if target.exists():
-            continue
+            end_pos = orig_pos[m.end() - 1]
+            # Asset suffix must follow with `_` so we don't mis-match a longer
+            # session whose name happens to start with this one's signature.
+            if end_pos + 1 >= len(entry.name) or entry.name[end_pos + 1] != "_":
+                continue
 
-        session_dir.mkdir(exist_ok=True)
-        try:
-            entry.rename(target)
-            moved += 1
-        except OSError as exc:
-            console.print(f"    [yellow]⚠ Could not migrate {entry.name}: {exc}[/yellow]")
+            asset_part = entry.name[end_pos + 1:]
+            target = session_dir / (safe_name + asset_part)
+            if target == entry:
+                continue
+            if target.exists():
+                continue
 
-    if moved:
-        console.print(f"    [dim]Migrated {moved} existing file(s) into session folder[/dim]")
-    return moved
+            session_dir.mkdir(exist_ok=True)
+            try:
+                entry.rename(target)
+                if location == session_dir:
+                    renamed_in_place += 1
+                else:
+                    moved += 1
+            except OSError as exc:
+                console.print(f"    [yellow]⚠ Could not migrate {entry.name}: {exc}[/yellow]")
+
+    if moved or renamed_in_place:
+        parts = []
+        if moved:
+            parts.append(f"moved {moved}")
+        if renamed_in_place:
+            parts.append(f"renamed {renamed_in_place} in place")
+        console.print(f"    [dim]Reconciled session folder: {', '.join(parts)}[/dim]")
+    return moved + renamed_in_place
 
 
 # ---------------------------------------------------------------------------
