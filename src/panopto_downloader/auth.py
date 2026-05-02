@@ -150,6 +150,63 @@ class PanoptoAuth:
     # Public interface
     # ------------------------------------------------------------------
 
+    def login_headless(
+        self,
+        server: str,
+        client_id: str,
+        client_secret: str,
+    ) -> None:
+        """Authenticate using the OAuth2 client_credentials grant (no browser needed).
+
+        Requires a client secret — this only works when the API client was
+        registered as a "Server-Side Web Application" in Panopto System Settings.
+        The resulting token represents the application, so it has access to
+        whatever content the Panopto server grants to that application.
+
+        Args:
+            server:        Panopto hostname, e.g. ``mitsloan.hosted.panopto.com``.
+            client_id:     The API client ID from Panopto System Settings.
+            client_secret: The client secret (required for this grant type).
+        """
+        if not client_secret:
+            raise AuthError(
+                "client_credentials grant requires a client secret. "
+                "Use 'auth login' (browser) if you only have a client ID."
+            )
+
+        token_url = f"https://{server}/Panopto/oauth2/connect/token"
+        payload = {
+            "grant_type": "client_credentials",
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "scope": "api",
+        }
+
+        try:
+            resp = requests.post(token_url, data=payload, timeout=30)
+            resp.raise_for_status()
+        except requests.RequestException as exc:
+            raise AuthError(
+                f"Headless login failed: {exc}\n"
+                "Make sure the API client type is 'Server-Side Web Application' in Panopto."
+            ) from exc
+
+        token_data = resp.json()
+        if "access_token" not in token_data:
+            raise AuthError(
+                f"Headless login failed — server returned: {token_data}.\n"
+                "The client may not be configured for client_credentials grant.\n"
+                "In Panopto System Settings → API Clients, the type must be "
+                "'Server-Side Web Application'."
+            )
+
+        token_data["server"] = server
+        token_data["client_id"] = client_id
+        token_data["client_secret"] = client_secret
+        token_data["issued_at"] = time.time()
+        self.storage.save(token_data)
+        self._token_data = token_data
+
     def login(
         self,
         server: str,
@@ -364,9 +421,18 @@ class PanoptoAuth:
         self._token_data = token_data
 
     def _refresh(self) -> None:
-        """Use the refresh token to obtain a new access token."""
+        """Use the refresh token (or re-run client_credentials) to obtain a new access token."""
         data = self._token_data
-        if not data or "refresh_token" not in data:
+        if not data:
+            profile_flag = f" --profile {self.profile}" if self.profile != DEFAULT_PROFILE else ""
+            raise AuthError(f"Session expired. Run: panopto-downloader{profile_flag} auth login")
+
+        # client_credentials tokens have no refresh token — just re-authenticate silently
+        if "refresh_token" not in data and data.get("client_secret"):
+            self.login_headless(data["server"], data["client_id"], data["client_secret"])
+            return
+
+        if "refresh_token" not in data:
             profile_flag = f" --profile {self.profile}" if self.profile != DEFAULT_PROFILE else ""
             raise AuthError(f"Session expired. Run: panopto-downloader{profile_flag} auth login")
 

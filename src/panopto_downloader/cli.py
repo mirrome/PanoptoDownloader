@@ -535,14 +535,25 @@ def auth() -> None:
     default=None,
     help="API client secret (default: $PANOPTO_CLIENT_SECRET from .env)",
 )
+@click.option(
+    "--headless",
+    is_flag=True,
+    default=False,
+    help=(
+        "Skip the browser — authenticate via client_credentials grant using "
+        "client ID + secret only. Requires the API client to be type "
+        "'Server-Side Web Application' in Panopto System Settings."
+    ),
+)
 @click.pass_context
 def auth_login(
     ctx: click.Context,
     server: str | None,
     client_id: str | None,
     client_secret: str | None,
+    headless: bool,
 ) -> None:
-    """Authenticate with Panopto via your browser.
+    """Authenticate with Panopto — browser (default) or headless.
 
     \b
     Credentials are read automatically from a .env file in the current
@@ -551,16 +562,24 @@ def auth_login(
 
     \b
     EXAMPLES:
-      panopto-downloader auth login                           (default profile, uses .env)
+      panopto-downloader auth login                           (browser, default profile)
+      panopto-downloader --profile menard auth login \\
+        --headless \\
+        --client-id ID --client-secret SECRET               (no browser, server-side app)
       panopto-downloader --profile eecs auth login \\
-        --server mit.hosted.panopto.com --client-id "id"     (named profile)
+        --server mit.hosted.panopto.com --client-id ID      (EECS, browser)
 
     \b
-    HOW IT WORKS:
+    HEADLESS MODE (--headless):
+      Uses the OAuth2 client_credentials grant — no browser, no user interaction.
+      Works only if the Panopto API client type is 'Server-Side Web Application'.
+      Tokens auto-renew silently using the same credentials, so they never expire.
+
+    \b
+    BROWSER MODE (default):
       1. Your browser opens the Panopto login page.
       2. Sign in with your institutional account.
-      3. Tokens are saved to ~/.config/panopto-downloader/tokens-<profile>.json.
-      You will not need to log in again until the refresh token expires.
+      3. Tokens saved to ~/.config/panopto-downloader/tokens-<profile>.json.
     """
     from .auth import get_env
 
@@ -589,11 +608,20 @@ def auth_login(
             return
 
     console.print(f"\n[bold]Profile:[/bold] {profile}")
-    console.print(f"[bold]Opening browser for[/bold] {resolved_server} …")
-    console.print("[dim]Waiting up to 2 minutes for you to complete login in the browser.[/dim]\n")
 
     try:
-        pa.login(resolved_server, resolved_client_id, resolved_secret)
+        if headless:
+            if not resolved_secret:
+                raise click.ClickException(
+                    "--headless requires a client secret. "
+                    "Pass --client-secret or set PANOPTO_CLIENT_SECRET in .env"
+                )
+            console.print(f"[bold]Authenticating headlessly against[/bold] {resolved_server} …")
+            pa.login_headless(resolved_server, resolved_client_id, resolved_secret)
+        else:
+            console.print(f"[bold]Opening browser for[/bold] {resolved_server} …")
+            console.print("[dim]Waiting up to 2 minutes for you to complete login in the browser.[/dim]\n")
+            pa.login(resolved_server, resolved_client_id, resolved_secret)
     except AuthError as exc:
         raise click.ClickException(str(exc)) from exc
 
