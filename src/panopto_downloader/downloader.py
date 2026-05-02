@@ -167,7 +167,7 @@ class VideoDownloader:
                 "--embed-subs",           # Embed subs in video if possible (mp4)
             ])
         
-        cmd.append("--no-warnings")
+        cmd.extend(["--no-warnings", "--no-mtime"])
         return cmd
 
     def _run_yt_dlp(
