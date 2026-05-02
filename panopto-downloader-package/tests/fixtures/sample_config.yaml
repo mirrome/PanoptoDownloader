@@ -1,0 +1,53 @@
+# Sample configuration for testing
+browser: chrome
+download_path: /tmp/panopto_test_downloads
+quality: highest
+
+composition:
+  layout: side-by-side
+  camera_position: left
+  slides_position: right
+  audio_source: camera
+  aspect_ratio_handling: black_bars
+  
+  encoding:
+    codec: x265
+    crf: 23
+    preset: medium
+    max_bitrate: 10M
+    buffer_size: 20M
+  
+  text_overlay:
+    enabled: true
+    font: Helvetica
+    size: 24
+    color: white
+    position: top-right
+
+naming:
+  format: "{course}_{title}_{date}"
+  date_format: "%Y-%m-%d"
+
+retry:
+  enabled: true
+  max_attempts: 3
+
+download:
+  parallel_workers: 2
+
+resume:
+  enabled: true
+  check_existing: true
+
+lectures:
+  - url: https://test.panopto.com/Panopto/Pages/Viewer.aspx?id=test-id-1
+    title: Test Lecture 1
+    course: TEST.101
+    date: 2025-01-15
+    instructor: Test Instructor
+
+  - url: https://test.panopto.com/Panopto/Pages/Viewer.aspx?id=test-id-2
+    title: Test Lecture 2
+    course: TEST.101
+    date: 2025-01-22
+

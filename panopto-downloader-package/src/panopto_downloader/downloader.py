@@ -1,33 +1,10 @@
 """Video downloading functionality using yt-dlp."""
 
 import subprocess
-import sys
 import tempfile
 import time
 from pathlib import Path
 from typing import Any
-
-
-def _yt_dlp_bin() -> str:
-    """Return the path to the yt-dlp binary in the current Python environment.
-
-    Resolves relative to sys.executable so it always finds the binary inside
-    the active venv, even when the venv's bin directory is not on PATH.
-    """
-    import shutil
-
-    # 1. Same directory as the running Python interpreter (works in any venv)
-    candidate = Path(sys.executable).parent / "yt-dlp"
-    if candidate.exists():
-        return str(candidate)
-
-    # 2. System PATH fallback (works when installed globally)
-    found = shutil.which("yt-dlp")
-    if found:
-        return found
-
-    # 3. Let subprocess raise a clear FileNotFoundError
-    return "yt-dlp"
 
 from rich.console import Console
 from tenacity import (
@@ -76,71 +53,14 @@ class AuthenticationError(DownloadError):
 class VideoDownloader:
     """Downloads videos from Panopto using yt-dlp."""
 
-    def __init__(
-        self,
-        config: AppConfig,
-        cookies_file: Path | None = None,
-        write_subs: bool = True,
-        auth: "Any | None" = None,
-    ) -> None:
+    def __init__(self, config: AppConfig) -> None:
         """Initialize downloader.
 
         Args:
-            config:       Application configuration.
-            cookies_file: Optional path to cookies.txt file.
-            write_subs:   Whether to download subtitles/captions.
-            auth:         Optional :class:`~.auth.PanoptoAuth` instance for
-                          OAuth-based stream discovery (skips cookie requirement
-                          for the DeliveryInfo API).
+            config: Application configuration.
         """
         self.config = config
         self.download_path = ensure_directory(config.download_path)
-        self.cookies_file = cookies_file
-        self.write_subs = write_subs
-        self.auth = auth
-
-    def _exported_cookies_path(self) -> Path | None:
-        """Return the exported cookies file for the active auth profile, if it exists."""
-        config_dir = Path("~/.config/panopto-downloader").expanduser()
-        # Prefer the profile-specific file (e.g. cookies-eecs.txt)
-        if self.auth is not None:
-            profile = getattr(self.auth, "profile", "default")
-            profile_path = config_dir / f"cookies-{profile}.txt"
-            if profile_path.exists() and profile_path.stat().st_size > 100:
-                return profile_path
-        # Fall back to the legacy default cookies.txt
-        default_path = config_dir / "cookies.txt"
-        return default_path if default_path.exists() and default_path.stat().st_size > 100 else None
-
-    @staticmethod
-    def _is_complete(path: Path, min_bytes: int = 1_000_000) -> bool:
-        """Return True if path exists as a complete file (no .part counterpart)."""
-        return path.exists() and path.stat().st_size >= min_bytes
-
-    @staticmethod
-    def _part_path(path: Path) -> Path:
-        """Return the yt-dlp .part file path for a given output path."""
-        return path.with_suffix(path.suffix + ".part")
-
-    @staticmethod
-    def _yt_dlp_stream_cmd(output_path: Path, stream_url: str) -> list[str]:
-        """Build a yt-dlp command for a direct CDN stream URL.
-
-        Includes resume (--continue) and retry flags so interrupted downloads
-        pick up from where they left off rather than starting over.
-        """
-        return [
-            _yt_dlp_bin(),
-            "--no-warnings",
-            "--no-mtime",              # don't set mtime — fails on some NAS filesystems
-            "--continue",              # resume .part files
-            "--retries", "10",         # retry full download on error
-            "--fragment-retries", "10",# retry individual HLS fragments
-            "--retry-sleep", "5",      # seconds between retries
-            "--socket-timeout", "60",  # socket timeout per operation
-            "-o", str(output_path),
-            stream_url,
-        ]
 
     def _get_yt_dlp_cmd(self) -> list[str]:
         """Get base yt-dlp command with common options.
@@ -148,26 +68,12 @@ class VideoDownloader:
         Returns:
             List of command arguments.
         """
-        cmd = [_yt_dlp_bin()]
-
-        # Used only for the viewer-URL fallback path (no OAuth + no podcast URL).
-        # Priority: explicit cookies file > exported cookies file > live browser.
-        cookies = self.cookies_file or self._exported_cookies_path()
-        if cookies:
-            cmd.extend(["--cookies", str(cookies)])
-        else:
-            cmd.extend(["--cookies-from-browser", self.config.browser.value])
-        
-        # Subtitle/caption options
-        if self.write_subs:
-            cmd.extend([
-                "--write-subs",           # Download subtitles
-                "--write-auto-subs",      # Download auto-generated subs if available
-                "--sub-langs", "all",     # Download all available languages
-                "--embed-subs",           # Embed subs in video if possible (mp4)
-            ])
-        
-        cmd.extend(["--no-warnings", "--no-mtime"])
+        cmd = [
+            "yt-dlp",
+            "--cookies-from-browser",
+            self.config.browser.value,
+            "--no-warnings",
+        ]
         return cmd
 
     def _run_yt_dlp(
@@ -843,275 +749,3 @@ class VideoDownloader:
 
         return results
 
-    def download_all_panopto_streams(
-        self,
-        url: str,
-        base_path: Path,
-        dry_run: bool = False,
-        include_composed: bool = True,
-    ) -> dict[str, Path | None]:
-        """Download everything Panopto has for a session.
-
-        Discovers all raw streams (every camera angle + slides) via the
-        DeliveryInfo API, also downloads the composed/stitched view via
-        yt-dlp, and fetches any available captions/transcripts.
-
-        Auth priority: OAuth Bearer token (``self.auth``) → cookies file →
-        browser cookies (yt-dlp falls back automatically).
-
-        Args:
-            url:              Panopto viewer URL.
-            base_path:        Base path for output files (stem, no extension).
-            dry_run:          Preview only — no files written.
-            include_composed: Also download the composed/stitched view.
-
-        Returns:
-            Dict mapping asset name → Path (or None on failure).
-        """
-        from .panopto_api import PanoptoAPI, PanoptoAPIError, PanoptoRestAPI
-
-        results: dict[str, Path | None] = {}
-
-        try:
-            video_id, server = PanoptoAPI.extract_video_id(url)
-        except PanoptoAPIError as exc:
-            raise DownloadError(f"Invalid Panopto URL: {exc}") from exc
-
-        # ---- 1 & 2. All streams via DeliveryInfo (Bearer token, no browser) ---
-        # One API call gets both the composed/podcast stream and all raw camera
-        # / slides streams. The CDN URLs returned are pre-signed, so yt-dlp can
-        # download them without any authentication headers at all.
-        # DeliveryInfo requires browser session cookies (not Bearer token).
-        # Priority: explicit cookies_file > exported file > browser extraction.
-        # When OAuth is configured, browser extraction is skipped to avoid
-        # Chrome dependency — use `auth export-cookies` instead.
-        cookies_file = self.cookies_file or self._exported_cookies_path()
-
-        api = PanoptoAPI(
-            auth=self.auth,
-            cookies_file=cookies_file,
-            browser=self.config.browser.value,
-        )
-
-        console.print("[bold]Fetching stream info via Panopto API…[/bold]")
-        try:
-            delivery_info = api.get_delivery_info(video_id, server)
-        except PanoptoAPIError as exc:
-            err_msg = str(exc)
-            if "export-cookies" in err_msg or "session cookie" in err_msg:
-                console.print(
-                    "\n[bold red]✗ No session cookies available for stream discovery.[/bold red]\n"
-                    "  Panopto's stream info endpoint requires browser session cookies\n"
-                    "  (OAuth tokens alone are not accepted by this endpoint).\n\n"
-                    "  Fix — run this once, then downloads will work without Chrome:\n"
-                    "    [bold cyan]panopto-downloader auth export-cookies[/bold cyan]\n"
-                )
-            else:
-                console.print(f"[red]✗ Stream discovery failed: {exc}[/red]")
-            # Return only the composed result (already downloaded or skipped above)
-            return results
-
-        delivery = (
-            delivery_info.get("Delivery")
-            or delivery_info.get("d", {}).get("Delivery")
-            or {}
-        )
-
-        raw_streams_data = delivery.get("Streams", [])
-        podcast_data = delivery.get("PodcastStreams", [])
-
-        from .panopto_api import PanoptoStream
-        raw_streams = [PanoptoStream(s) for s in raw_streams_data]
-        podcast_streams = [PanoptoStream(s) for s in podcast_data]
-
-        total_found = len(raw_streams) + len(podcast_streams)
-        console.print(
-            f"[green]Found {len(raw_streams)} camera/slide stream(s) + "
-            f"{len(podcast_streams)} composed stream(s)[/green]\n"
-        )
-
-        # ---- 1. Composed / stitched view (from PodcastStreams) ----------
-        if include_composed:
-            composed_path = Path(str(base_path) + "_composed.mp4")
-            part_path = self._part_path(composed_path)
-            console.print("[bold cyan]── Composed view ──[/bold cyan]")
-
-            if self._is_complete(composed_path):
-                print_info(f"Already exists ({format_bytes(composed_path.stat().st_size)}), skipping")
-                results["composed"] = composed_path
-            elif dry_run:
-                console.print(f"  [dim]Would download: {composed_path.name}[/dim]")
-                results["composed"] = composed_path
-            elif podcast_streams and podcast_streams[0].stream_url:
-                cdn_url = podcast_streams[0].stream_url
-                # Download to local temp then move to NAS to avoid SMB close()/flush()
-                # failures on large composed files. Use a temp DIRECTORY so the target
-                # filename doesn't pre-exist (yt-dlp would skip an empty pre-existing file).
-                import tempfile, shutil
-                try:
-                    with tempfile.TemporaryDirectory(prefix="panopto_") as _tmp_dir:
-                        tmp_path = Path(_tmp_dir) / "composed.mp4"
-                        cmd = self._yt_dlp_stream_cmd(tmp_path, cdn_url)
-                        proc = subprocess.run(cmd, capture_output=False, check=False)
-                        if proc.returncode == 0 and tmp_path.exists() and tmp_path.stat().st_size >= 1_000_000:
-                            console.print(f"  [dim]Moving to NAS: {format_bytes(tmp_path.stat().st_size)}…[/dim]")
-                            shutil.move(str(tmp_path), str(composed_path))
-                            results["composed"] = composed_path
-                            print_success(f"Composed: {format_bytes(composed_path.stat().st_size)}")
-                        else:
-                            results["composed"] = None
-                            print_error("Composed download failed")
-                except Exception as exc:
-                    print_error(f"Composed download error: {exc}")
-                    results["composed"] = None
-            else:
-                if cookies_file:
-                    # HLS streams (viewer URL) cannot be byte-resumed — each new
-                    # request gets a fresh signed m3u8, making any existing .part
-                    # file incompatible. Delete it so yt-dlp starts clean.
-                    if part_path.exists():
-                        console.print(
-                            f"  [yellow]Removing stale .part file "
-                            f"({format_bytes(part_path.stat().st_size)}) — "
-                            "HLS streams cannot be byte-resumed, restarting…[/yellow]"
-                        )
-                        part_path.unlink(missing_ok=True)
-                    # Download to a local temp DIRECTORY first, then move to the NAS.
-                    # SMB writes intermittently fail on close()/flush() with [Errno 22]
-                    # even when all bytes were written. Using a temp directory ensures
-                    # the target filename doesn't pre-exist (would otherwise trick
-                    # yt-dlp into thinking the file is "already downloaded").
-                    import tempfile, shutil
-                    try:
-                        with tempfile.TemporaryDirectory(prefix="panopto_") as _tmp_dir:
-                            tmp_path = Path(_tmp_dir) / "composed.mp4"
-                            cmd = self._get_yt_dlp_cmd()
-                            cmd.extend([
-                                "--retries", "10",
-                                "--fragment-retries", "10",
-                                "--retry-sleep", "5",
-                                "--socket-timeout", "60",
-                                "-f", "hls-2160/hls-1080/hls-720/hls-480/best",
-                                "-o", str(tmp_path),
-                                url,
-                            ])
-                            proc = subprocess.run(cmd, capture_output=False, check=False)
-                            if proc.returncode == 0 and tmp_path.exists() and tmp_path.stat().st_size >= 1_000_000:
-                                console.print(f"  [dim]Moving to NAS: {format_bytes(tmp_path.stat().st_size)}…[/dim]")
-                                shutil.move(str(tmp_path), str(composed_path))
-                                results["composed"] = composed_path
-                                print_success(f"Composed: {format_bytes(composed_path.stat().st_size)}")
-                            else:
-                                results["composed"] = None
-                                print_error("Composed download failed")
-                    except Exception as exc:
-                        print_error(f"Composed download error: {exc}")
-                        results["composed"] = None
-                else:
-                    console.print(
-                        "[yellow]⚠  No composed stream URL and no session cookies.\n"
-                        "  Run [bold cyan]panopto-downloader auth export-cookies[/bold cyan] "
-                        "to fix this.[/yellow]"
-                    )
-                    results["composed"] = None
-
-            console.print()
-
-        # ---- 2. Raw streams (all cameras + slides) ----------------------
-        if not raw_streams:
-            console.print(
-                "[dim]ℹ  Only a composed/single-stream recording — "
-                "no separate camera or slides files available.[/dim]\n"
-            )
-
-        for i, stream in enumerate(raw_streams, 1):
-            stream_name = stream.clean_name
-            output_path = Path(str(base_path) + f"_{stream_name}.mp4")
-
-            console.print(
-                f"[bold cyan]── Stream {i}/{len(raw_streams)}: {stream.name}[/bold cyan]  "
-                f"[dim]({stream.stream_type})[/dim]"
-            )
-
-            if dry_run:
-                console.print(f"  [dim]Would download: {output_path.name}[/dim]")
-                results[stream_name] = output_path
-                console.print()
-                continue
-
-            if self._is_complete(output_path):
-                print_info(f"Already exists ({format_bytes(output_path.stat().st_size)}), skipping")
-                results[stream_name] = output_path
-                console.print()
-                continue
-
-            if not stream.stream_url:
-                print_warning("No stream URL available, skipping")
-                results[stream_name] = None
-                console.print()
-                continue
-
-            part_path = self._part_path(output_path)
-            if part_path.exists():
-                console.print(
-                    f"  [yellow]Resuming partial download "
-                    f"({format_bytes(part_path.stat().st_size)} already downloaded)…[/yellow]"
-                )
-
-            try:
-                # CDN URLs from DeliveryInfo are pre-signed — no auth headers needed
-                cmd = self._yt_dlp_stream_cmd(output_path, stream.stream_url)
-                proc = subprocess.run(cmd, capture_output=False, check=False)
-                if proc.returncode == 0 and self._is_complete(output_path):
-                    results[stream_name] = output_path
-                    print_success(f"Saved: {format_bytes(output_path.stat().st_size)}")
-                else:
-                    results[stream_name] = None
-                    print_error(f"Failed (exit {proc.returncode})")
-            except Exception as exc:
-                print_error(f"Error: {exc}")
-                results[stream_name] = None
-
-            console.print()
-
-        # ---- 3. Captions / transcripts ----------------------------------
-        console.print("[bold cyan]── Captions / transcripts ──[/bold cyan]")
-        captions_saved = 0
-        if self.auth:
-            try:
-                rest = PanoptoRestAPI(self.auth)
-                transcripts = rest.get_session_transcripts(video_id)
-                for t in transcripts:
-                    lang = (t.get("Language") or "unknown").replace(" ", "_")
-                    ttype = (t.get("TranscriptType") or "srt").lower()
-                    ext = "vtt" if "vtt" in ttype else "srt"
-                    dest = Path(str(base_path) + f"_captions_{lang}.{ext}")
-                    turl = t.get("TranscriptFileUrl") or t.get("Url") or ""
-                    if not turl or dry_run:
-                        console.print(f"  [dim]Caption ({lang}): {dest.name}[/dim]")
-                        captions_saved += 1
-                        continue
-                    if rest.download_transcript(turl, dest):
-                        results[f"captions_{lang}"] = dest
-                        print_success(f"Captions ({lang}): {dest.name}")
-                        captions_saved += 1
-                    else:
-                        print_warning(f"Caption download failed ({lang})")
-            except Exception as exc:
-                print_warning(f"Transcript fetch failed: {exc}")
-
-        # yt-dlp also writes embedded subs automatically when write_subs=True
-        if captions_saved == 0:
-            console.print("  [dim]No separate caption files found (subtitles may be embedded).[/dim]")
-        console.print()
-
-        # ---- Summary ----------------------------------------------------
-        ok = sum(1 for p in results.values() if p is not None)
-        total = len(results)
-        console.print(f"[bold]{'Dry run — ' if dry_run else ''}Downloaded {ok}/{total} assets[/bold]")
-        for name, path in results.items():
-            icon = "[green]✓[/green]" if path else "[red]✗[/red]"
-            label = path.name if path else "failed"
-            console.print(f"  {icon} {name}: {label}")
-
-        return results

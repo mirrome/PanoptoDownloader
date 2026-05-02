@@ -1,0 +1,83 @@
+# Panopto Downloader Configuration
+# ================================
+# Copy this file to config.yaml and customize for your needs
+#
+# Quick Start:
+#   1. Copy to config.yaml
+#   2. Update the lectures section with your Panopto URLs
+#   3. Run: panopto-downloader download
+#
+# Commands:
+#   panopto-downloader download              # Download all lectures
+#   panopto-downloader download --parallel   # Force parallel downloads
+#   panopto-downloader download --workers 3  # Use 3 parallel workers
+#   panopto-downloader list                  # List configured lectures
+#   panopto-downloader validate              # Check config is valid
+#   panopto-downloader download -n           # Dry run (preview only)
+
+# Browser to extract cookies from (chrome or safari)
+# Make sure you're logged into Panopto in this browser
+browser: chrome
+
+# Where to save downloaded videos
+download_path: ~/Videos/MIT_Lectures
+
+# Quality settings - automatically select highest available DV stream
+quality: highest
+
+# Naming convention for output files
+# Available placeholders: {course}, {title}, {date}
+naming:
+  format: "{course}_{title}_{date}"
+  date_format: "%Y-%m-%d"
+
+# Error handling - retry failed downloads
+retry:
+  enabled: true
+  max_attempts: 3
+
+# Download settings
+download:
+  # Number of concurrent downloads (1-10)
+  # Higher values = faster overall, but more bandwidth/CPU
+  # Recommended: 2-3 for stable connections
+  parallel_workers: 2
+
+# Resume capability - skip already downloaded files
+resume:
+  enabled: true
+  check_existing: true
+
+# ============================================================================
+# LECTURES TO DOWNLOAD
+# ============================================================================
+# Add your lectures below. Each lecture requires:
+#   - url: Full Panopto viewer URL
+#   - title: Descriptive title for the file
+#   - course: Course code/name
+#   - date: Lecture date (YYYY-MM-DD)
+#   - instructor: (optional) Instructor name
+#
+# TIP: Copy URLs from your browser when viewing a lecture in Panopto
+# ============================================================================
+
+lectures:
+  # Example: Finance Theory I
+  - url: https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=example-id-1
+    title: "Capital Budgeting Heads Up"
+    course: "15.401"
+    date: 2025-01-15
+    instructor: Prof. Smith
+
+  - url: https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=example-id-2
+    title: "WACC and Cost of Capital"
+    course: "15.401"
+    date: 2025-01-22
+    instructor: Prof. Smith
+
+  # Example: Corporate Finance
+  # - url: https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=...
+  #   title: "Lecture 1 - Introduction"
+  #   course: "15.402"
+  #   date: 2025-01-10
+

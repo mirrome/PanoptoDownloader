@@ -1,0 +1,67 @@
+# Introduction to Disciplined Entrepreneurship Course - Panopto Downloader Config
+# =====================================================
+#
+# HOW TO USE:
+# 1. Open each lecture in Chrome and copy the URL
+# 2. Paste the URL in the 'url' field below
+# 3. Run: panopto-downloader -c disciplined_entrepreneurship.yaml download
+#
+# TIP: Close Chrome before running for reliable cookie access
+
+browser: chrome
+
+# Where to save videos
+download_path: ~/Videos/MIT_Lectures/Disciplined_Entrepreneurship
+
+# Output naming: Course_Title_Date.mp4
+naming:
+  format: "{course}_{title}_{date}"
+  date_format: "%Y-%m-%d"
+  create_lecture_folders: true  # Creates a folder per lecture named after the title
+
+# Download 4 videos at a time (change to 1 for sequential, or adjust as needed)
+download:
+  parallel_workers: 4
+  download_all_streams: true  # Download composed, camera, and slides for each lecture
+
+# Skip already downloaded files
+resume:
+  check_existing: true
+
+# Retry failed downloads 3 times
+retry:
+  enabled: true
+  max_attempts: 3
+
+# ============================================================================
+# 15.718 - Introduction to Disciplined Entrepreneurship (Prof. Bill Aulet)
+# ============================================================================
+
+lectures:
+  # Lecture 1
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=ced41f64-c2e2-4913-93dd-b3c901011071"
+    title: "Lecture 1"
+    course: "15.718 - Introduction to Disciplined Entrepreneurship"
+    date: 2026-01-07
+    instructor: "Bill Aulet"
+
+  # Lecture 2
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=45ec3a13-c2f1-472b-bf2c-b3c90108f7f5"
+    title: "Lecture 2"
+    course: "15.718 - Introduction to Disciplined Entrepreneurship"
+    date: 2026-01-07
+    instructor: "Bill Aulet"
+
+  # Lecture 3
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=c34029d4-9ca7-48de-92bf-b3c9010110da"
+    title: "Lecture 3"
+    course: "15.718 - Introduction to Disciplined Entrepreneurship"
+    date: 2026-01-08
+    instructor: "Bill Aulet"
+
+  # Lecture 4
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=4316638d-f748-4a13-ae7f-b3c90108f840"
+    title: "Lecture 4"
+    course: "15.718 - Introduction to Disciplined Entrepreneurship"
+    date: 2026-01-08
+    instructor: "Bill Aulet"

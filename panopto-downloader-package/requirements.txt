@@ -1,0 +1,23 @@
+# Panopto Downloader - Production Dependencies
+# Install with: pip install -r requirements.txt
+
+# Video downloading
+yt-dlp>=2024.1.0
+
+# Cookie extraction from browsers
+browser-cookie3>=0.19.0
+
+# Configuration
+PyYAML>=6.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# CLI framework
+click>=8.1.0
+
+# Terminal UI and progress bars
+rich>=13.0.0
+
+# Retry logic
+tenacity>=8.2.0
+

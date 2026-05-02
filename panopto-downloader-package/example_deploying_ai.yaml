@@ -1,0 +1,67 @@
+# Deploying AI in the Corporation Course - Panopto Downloader Config
+# =====================================================
+#
+# HOW TO USE:
+# 1. Open each lecture in Chrome and copy the URL
+# 2. Paste the URL in the 'url' field below
+# 3. Run: panopto-downloader -c deploying_ai.yaml download
+#
+# TIP: Close Chrome before running for reliable cookie access
+
+browser: chrome
+
+# Where to save videos
+download_path: ~/Videos/MIT_Lectures/Deploying_AI
+
+# Output naming: Course_Title_Date.mp4
+naming:
+  format: "{course}_{title}_{date}"
+  date_format: "%Y-%m-%d"
+  create_lecture_folders: true  # Creates a folder per lecture named after the title
+
+# Download 4 videos at a time (change to 1 for sequential, or adjust as needed)
+download:
+  parallel_workers: 4
+  download_all_streams: true  # Download composed, camera, and slides for each lecture
+
+# Skip already downloaded files
+resume:
+  check_existing: true
+
+# Retry failed downloads 3 times
+retry:
+  enabled: true
+  max_attempts: 3
+
+# ============================================================================
+# Deploying AI in the Corporation (Prof. Manolis Kellis)
+# ============================================================================
+
+lectures:
+  # Lecture 1
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=eb8b9a64-bc63-4a6e-91dc-b3cb0004dfb1"
+    title: "Lecture 1"
+    course: "Deploying AI in the Corporation"
+    date: 2026-01-09
+    instructor: "Manolis Kellis"
+
+  # Lecture 2
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=e7bb0ac4-da3a-4b7a-bc4e-b3cb000515d1"
+    title: "Lecture 2"
+    course: "Deploying AI in the Corporation"
+    date: 2026-01-09
+    instructor: "Manolis Kellis"
+
+  # Lecture 3
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=cae01ae8-7042-431d-b895-b3cb0004e016"
+    title: "Lecture 3"
+    course: "Deploying AI in the Corporation"
+    date: 2026-01-10
+    instructor: "Manolis Kellis"
+
+  # Lecture 4
+  - url: "https://mitsloan.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=796093a8-7bf9-4779-b53c-b3cb00051636"
+    title: "Lecture 4"
+    course: "Deploying AI in the Corporation"
+    date: 2026-01-10
+    instructor: "Manolis Kellis"
