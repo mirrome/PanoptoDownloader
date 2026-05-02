@@ -1404,7 +1404,13 @@ def batch(
             )
 
             if all_streams:
-                base = course_dir / safe_name
+                # Folder-per-session: each session gets its own subdirectory,
+                # files inside keep the session-name prefix so they remain
+                # uniquely identifiable even if moved out of the folder.
+                session_dir = course_dir / safe_name
+                session_dir.mkdir(exist_ok=True)
+                _migrate_existing_assets(course_dir, session_dir, safe_name)
+                base = session_dir / safe_name
                 try:
                     downloader.download_all_panopto_streams(url, base, dry_run=False)
                     total_sessions_downloaded += 1
@@ -1421,7 +1427,10 @@ def batch(
                     course=folder_name,
                     date=datetime.date.today(),
                 )
-                output_path = course_dir / f"{safe_name}.mp4"
+                session_dir = course_dir / safe_name
+                session_dir.mkdir(exist_ok=True)
+                _migrate_existing_assets(course_dir, session_dir, safe_name)
+                output_path = session_dir / f"{safe_name}.mp4"
                 result = downloader.download_lecture(lecture, output_path=output_path)
                 if result.success:
                     total_sessions_downloaded += 1
@@ -1452,6 +1461,68 @@ def _safe_filename(name: str) -> str:
     name = re.sub(r'[<>:"|?*]', "", name)
     name = re.sub(r"\s+", " ", name).strip()
     return name[:200] or "session"
+
+
+def _normalize_date(name: str) -> str:
+    """Convert no-dash date 'on MMDDYYYY (' into dashed 'on M-D-YYYY ('."""
+    import re
+    return re.sub(
+        r"(\bon )(\d{1,2})(\d{2})(\d{4})( \()",
+        lambda m: f"{m.group(1)}{int(m.group(2))}-{int(m.group(3))}-{m.group(4)}{m.group(5)}",
+        name,
+    )
+
+
+def _denormalize_date(name: str) -> str:
+    """Convert dashed date 'on M-D-YYYY (' into no-dash 'on MMDDYYYY (' (legacy)."""
+    import re
+    return re.sub(
+        r"(\bon )(\d{1,2})-(\d{1,2})-(\d{4})( \()",
+        lambda m: f"{m.group(1)}{m.group(2)}{int(m.group(3)):02d}{m.group(4)}{m.group(5)}",
+        name,
+    )
+
+
+def _migrate_existing_assets(
+    course_dir: Path, session_dir: Path, safe_name: str
+) -> int:
+    """Move any pre-existing flat session files into the per-session folder.
+
+    Handles both new-format (with dashes in the date) and old-format (no
+    dashes, legacy from earlier versions) filenames. Old-format files have
+    their date normalized to the new format during the move. Returns the
+    number of files migrated.
+    """
+    if not course_dir.exists():
+        return 0
+
+    new_prefix = safe_name + "_"
+    old_prefix = _denormalize_date(safe_name) + "_"
+
+    moved = 0
+    for entry in list(course_dir.iterdir()):
+        if not entry.is_file():
+            continue
+        if entry.parent == session_dir:
+            continue
+        if entry.name.startswith(new_prefix):
+            target = session_dir / entry.name
+        elif old_prefix != new_prefix and entry.name.startswith(old_prefix):
+            target = session_dir / _normalize_date(entry.name)
+        else:
+            continue
+
+        if target.exists():
+            continue
+        session_dir.mkdir(exist_ok=True)
+        try:
+            entry.rename(target)
+            moved += 1
+        except OSError as exc:
+            console.print(f"    [yellow]⚠ Could not migrate {entry.name}: {exc}[/yellow]")
+    if moved:
+        console.print(f"    [dim]Migrated {moved} existing file(s) into session folder[/dim]")
+    return moved
 
 
 # ---------------------------------------------------------------------------
