@@ -1463,15 +1463,23 @@ def _safe_filename(name: str) -> str:
     return name[:200] or "session"
 
 
-def _signature(name: str) -> str:
-    """Strip all separators for case- and separator-insensitive comparison.
+def _build_session_pattern(safe_name: str):
+    """Build a regex matching candidate file signatures for this session.
 
-    'EMBA 26 CDO Kickoff Session - 102224' and
-    'EMBA 26 CDO Kickoff Session - 10-22-24' both reduce to
-    'emba26cdokickoffsession102224' — same session, different formatting.
+    Strips separators (-, _, space) and lowercases. Digit runs become `\\d+`
+    so legacy filenames with different zero-padding or year width still
+    match (e.g. session 'on 1-3-2025' matches old file 'on 1032025' or
+    'on 01-03-2025'). Letters and other symbols are matched literally.
     """
     import re
-    return re.sub(r"[-_\s]", "", name).lower()
+    sig = re.sub(r"[-_\s]", "", safe_name).lower()
+    parts = []
+    for token in re.findall(r"(\d+|[^\d]+)", sig):
+        if token.isdigit():
+            parts.append(r"\d+")
+        else:
+            parts.append(re.escape(token))
+    return re.compile("^" + "".join(parts), re.IGNORECASE)
 
 
 def _migrate_existing_assets(
@@ -1479,48 +1487,45 @@ def _migrate_existing_assets(
 ) -> int:
     """Move any pre-existing flat session files into the per-session folder.
 
-    Matches files in the parent course folder whose names share the session's
-    signature (separator-insensitive prefix), regardless of whether the
-    legacy filename used dashes in dates or not. Files are renamed to use
-    the current canonical session name during the move so future runs see
-    consistent naming. Returns the number of files migrated.
+    Matches files in the parent course folder against the session's name
+    using a separator-insensitive, digit-flexible regex. This handles
+    legacy filenames that may differ from the current name in date
+    formatting (zero-padding, dashes vs no-dashes, 2- vs 4-digit years).
+    Files are renamed to the current canonical session name during the
+    move so future runs see consistent naming. Returns the count moved.
     """
     if not course_dir.exists():
         return 0
 
-    session_sig = _signature(safe_name)
-    if not session_sig:
-        return 0
+    pattern = _build_session_pattern(safe_name)
 
     moved = 0
     for entry in list(course_dir.iterdir()):
         if not entry.is_file() or entry.parent == session_dir:
             continue
 
-        # Walk entry.name char-by-char, building a signature. Stop when it
-        # matches the session signature exactly. Bail early if the prefix
-        # diverges (so we don't mis-match unrelated sessions).
-        sig = ""
-        match_end = -1
+        # Build candidate signature alongside an index map back to the
+        # original filename so we know where the session prefix ends.
+        sig_chars: list[str] = []
+        orig_pos: list[int] = []
         for i, ch in enumerate(entry.name):
             if ch in "-_ ":
                 continue
-            sig += ch.lower()
-            if not session_sig.startswith(sig):
-                break
-            if sig == session_sig:
-                match_end = i
-                break
+            sig_chars.append(ch.lower())
+            orig_pos.append(i)
+        candidate_sig = "".join(sig_chars)
 
-        if match_end < 0:
+        m = pattern.match(candidate_sig)
+        if not m or m.end() == 0:
             continue
 
-        # The asset suffix must follow with `_` (e.g., `_camera.mp4`) so we
-        # don't accidentally match a longer session that starts with this name.
-        if match_end + 1 >= len(entry.name) or entry.name[match_end + 1] != "_":
+        end_pos = orig_pos[m.end() - 1]
+        # Asset suffix must follow with `_` so we don't mis-match a longer
+        # session whose name happens to start with this one's signature.
+        if end_pos + 1 >= len(entry.name) or entry.name[end_pos + 1] != "_":
             continue
 
-        asset_part = entry.name[match_end + 1:]  # includes leading "_"
+        asset_part = entry.name[end_pos + 1:]
         target = session_dir / (safe_name + asset_part)
         if target.exists():
             continue
