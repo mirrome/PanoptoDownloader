@@ -1463,24 +1463,15 @@ def _safe_filename(name: str) -> str:
     return name[:200] or "session"
 
 
-def _normalize_date(name: str) -> str:
-    """Convert no-dash date 'on MMDDYYYY (' into dashed 'on M-D-YYYY ('."""
-    import re
-    return re.sub(
-        r"(\bon )(\d{1,2})(\d{2})(\d{4})( \()",
-        lambda m: f"{m.group(1)}{int(m.group(2))}-{int(m.group(3))}-{m.group(4)}{m.group(5)}",
-        name,
-    )
+def _signature(name: str) -> str:
+    """Strip all separators for case- and separator-insensitive comparison.
 
-
-def _denormalize_date(name: str) -> str:
-    """Convert dashed date 'on M-D-YYYY (' into no-dash 'on MMDDYYYY (' (legacy)."""
+    'EMBA 26 CDO Kickoff Session - 102224' and
+    'EMBA 26 CDO Kickoff Session - 10-22-24' both reduce to
+    'emba26cdokickoffsession102224' — same session, different formatting.
+    """
     import re
-    return re.sub(
-        r"(\bon )(\d{1,2})-(\d{1,2})-(\d{4})( \()",
-        lambda m: f"{m.group(1)}{m.group(2)}{int(m.group(3)):02d}{m.group(4)}{m.group(5)}",
-        name,
-    )
+    return re.sub(r"[-_\s]", "", name).lower()
 
 
 def _migrate_existing_assets(
@@ -1488,38 +1479,59 @@ def _migrate_existing_assets(
 ) -> int:
     """Move any pre-existing flat session files into the per-session folder.
 
-    Handles both new-format (with dashes in the date) and old-format (no
-    dashes, legacy from earlier versions) filenames. Old-format files have
-    their date normalized to the new format during the move. Returns the
-    number of files migrated.
+    Matches files in the parent course folder whose names share the session's
+    signature (separator-insensitive prefix), regardless of whether the
+    legacy filename used dashes in dates or not. Files are renamed to use
+    the current canonical session name during the move so future runs see
+    consistent naming. Returns the number of files migrated.
     """
     if not course_dir.exists():
         return 0
 
-    new_prefix = safe_name + "_"
-    old_prefix = _denormalize_date(safe_name) + "_"
+    session_sig = _signature(safe_name)
+    if not session_sig:
+        return 0
 
     moved = 0
     for entry in list(course_dir.iterdir()):
-        if not entry.is_file():
-            continue
-        if entry.parent == session_dir:
-            continue
-        if entry.name.startswith(new_prefix):
-            target = session_dir / entry.name
-        elif old_prefix != new_prefix and entry.name.startswith(old_prefix):
-            target = session_dir / _normalize_date(entry.name)
-        else:
+        if not entry.is_file() or entry.parent == session_dir:
             continue
 
+        # Walk entry.name char-by-char, building a signature. Stop when it
+        # matches the session signature exactly. Bail early if the prefix
+        # diverges (so we don't mis-match unrelated sessions).
+        sig = ""
+        match_end = -1
+        for i, ch in enumerate(entry.name):
+            if ch in "-_ ":
+                continue
+            sig += ch.lower()
+            if not session_sig.startswith(sig):
+                break
+            if sig == session_sig:
+                match_end = i
+                break
+
+        if match_end < 0:
+            continue
+
+        # The asset suffix must follow with `_` (e.g., `_camera.mp4`) so we
+        # don't accidentally match a longer session that starts with this name.
+        if match_end + 1 >= len(entry.name) or entry.name[match_end + 1] != "_":
+            continue
+
+        asset_part = entry.name[match_end + 1:]  # includes leading "_"
+        target = session_dir / (safe_name + asset_part)
         if target.exists():
             continue
+
         session_dir.mkdir(exist_ok=True)
         try:
             entry.rename(target)
             moved += 1
         except OSError as exc:
             console.print(f"    [yellow]⚠ Could not migrate {entry.name}: {exc}[/yellow]")
+
     if moved:
         console.print(f"    [dim]Migrated {moved} existing file(s) into session folder[/dim]")
     return moved
