@@ -132,6 +132,7 @@ class VideoDownloader:
         return [
             _yt_dlp_bin(),
             "--no-warnings",
+            "--no-mtime",              # don't set mtime — fails on some NAS filesystems
             "--continue",              # resume .part files
             "--retries", "10",         # retry full download on error
             "--fragment-retries", "10",# retry individual HLS fragments
