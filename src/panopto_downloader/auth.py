@@ -251,34 +251,48 @@ class PanoptoAuth:
         client_id: str,
         client_secret: str = "",
     ) -> None:
-        """Run the copy-paste PKCE flow for headless / SSH environments.
+        """Run the copy-paste auth flow for headless / SSH environments.
 
-        Instead of starting a local HTTP server, prints the authorization URL
-        so the user can open it on any browser (phone, another laptop, etc.).
+        Prints the authorization URL so the user can open it on any browser.
         After login Panopto redirects to localhost:9127 which fails — the user
         copies that full redirect URL from the browser address bar and pastes
-        it here. We extract the code and exchange it for tokens normally.
+        it here. We extract the code and exchange it for tokens.
+
+        Uses PKCE when no client_secret is provided (Mobile/Desktop app type).
+        Uses plain authorization_code + secret when client_secret is given
+        (Server-Side Web Application type — PKCE not supported for those).
 
         Args:
             server:        Panopto hostname.
             client_id:     The API client ID.
-            client_secret: Optional client secret.
+            client_secret: Client secret if using a server-side app client.
         """
-        import sys
-
-        code_verifier, code_challenge = self._generate_pkce()
         state = secrets.token_urlsafe(16)
+        use_pkce = not client_secret
 
-        auth_url = (
-            f"https://{server}/Panopto/oauth2/connect/authorize"
-            f"?client_id={urllib.parse.quote(client_id)}"
-            f"&response_type=code"
-            f"&redirect_uri={urllib.parse.quote(REDIRECT_URI)}"
-            f"&scope={urllib.parse.quote(SCOPES)}"
-            f"&state={state}"
-            f"&code_challenge={code_challenge}"
-            f"&code_challenge_method=S256"
-        )
+        if use_pkce:
+            code_verifier, code_challenge = self._generate_pkce()
+            auth_url = (
+                f"https://{server}/Panopto/oauth2/connect/authorize"
+                f"?client_id={urllib.parse.quote(client_id)}"
+                f"&response_type=code"
+                f"&redirect_uri={urllib.parse.quote(REDIRECT_URI)}"
+                f"&scope={urllib.parse.quote(SCOPES)}"
+                f"&state={state}"
+                f"&code_challenge={code_challenge}"
+                f"&code_challenge_method=S256"
+            )
+        else:
+            # Server-Side Web Application: plain auth code flow, no PKCE
+            code_verifier = ""
+            auth_url = (
+                f"https://{server}/Panopto/oauth2/connect/authorize"
+                f"?client_id={urllib.parse.quote(client_id)}"
+                f"&response_type=code"
+                f"&redirect_uri={urllib.parse.quote(REDIRECT_URI)}"
+                f"&scope={urllib.parse.quote(SCOPES)}"
+                f"&state={state}"
+            )
 
         print("\n" + "─" * 60)
         print("STEP 1 — Send this URL to the person whose account this is:")
@@ -513,13 +527,22 @@ class PanoptoAuth:
             "code": code,
             "redirect_uri": REDIRECT_URI,
             "client_id": client_id,
-            "code_verifier": code_verifier,
         }
+        # PKCE: include code_verifier only when we used a code_challenge
+        if code_verifier:
+            payload["code_verifier"] = code_verifier
+        # Server-side app: authenticate with client_secret instead of PKCE
         if client_secret:
             payload["client_secret"] = client_secret
 
         try:
             resp = requests.post(token_url, data=payload, timeout=30)
+            if not resp.ok:
+                try:
+                    body = resp.json()
+                except Exception:
+                    body = resp.text
+                raise AuthError(f"Token exchange failed: HTTP {resp.status_code}: {body}")
             resp.raise_for_status()
         except requests.RequestException as exc:
             raise AuthError(f"Token exchange failed: {exc}") from exc
