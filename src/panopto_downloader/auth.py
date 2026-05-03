@@ -160,8 +160,8 @@ class PanoptoAuth:
 
         Requires a client secret — this only works when the API client was
         registered as a "Server-Side Web Application" in Panopto System Settings.
-        The resulting token represents the application, so it has access to
-        whatever content the Panopto server grants to that application.
+        Tries both form-body and HTTP Basic Auth credential encoding since
+        different Panopto instances require different approaches.
 
         Args:
             server:        Panopto hostname, e.g. ``mitsloan.hosted.panopto.com``.
@@ -175,37 +175,75 @@ class PanoptoAuth:
             )
 
         token_url = f"https://{server}/Panopto/oauth2/connect/token"
-        payload = {
-            "grant_type": "client_credentials",
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "scope": "api",
-        }
 
-        try:
-            resp = requests.post(token_url, data=payload, timeout=30)
-            resp.raise_for_status()
-        except requests.RequestException as exc:
-            raise AuthError(
-                f"Headless login failed: {exc}\n"
-                "Make sure the API client type is 'Server-Side Web Application' in Panopto."
-            ) from exc
+        # Panopto instances vary: some want credentials in the POST body,
+        # others expect HTTP Basic Auth. Try both before giving up.
+        attempts = [
+            # 1) credentials in form body (most common)
+            {
+                "data": {
+                    "grant_type": "client_credentials",
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "scope": "api",
+                },
+                "auth": None,
+            },
+            # 2) HTTP Basic Auth + minimal body
+            {
+                "data": {
+                    "grant_type": "client_credentials",
+                    "scope": "api",
+                },
+                "auth": (client_id, client_secret),
+            },
+            # 3) no scope (some servers reject unknown scopes for CC grant)
+            {
+                "data": {
+                    "grant_type": "client_credentials",
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                },
+                "auth": None,
+            },
+        ]
 
-        token_data = resp.json()
-        if "access_token" not in token_data:
-            raise AuthError(
-                f"Headless login failed — server returned: {token_data}.\n"
-                "The client may not be configured for client_credentials grant.\n"
-                "In Panopto System Settings → API Clients, the type must be "
-                "'Server-Side Web Application'."
-            )
+        last_error = ""
+        for attempt in attempts:
+            try:
+                resp = requests.post(
+                    token_url,
+                    data=attempt["data"],
+                    auth=attempt["auth"],
+                    timeout=30,
+                )
+                if resp.ok:
+                    token_data = resp.json()
+                    if "access_token" in token_data:
+                        token_data["server"] = server
+                        token_data["client_id"] = client_id
+                        token_data["client_secret"] = client_secret
+                        token_data["issued_at"] = time.time()
+                        self.storage.save(token_data)
+                        self._token_data = token_data
+                        return
+                # Capture the body for the error message
+                try:
+                    body = resp.json()
+                except Exception:
+                    body = resp.text
+                last_error = f"HTTP {resp.status_code}: {body}"
+            except requests.RequestException as exc:
+                last_error = str(exc)
 
-        token_data["server"] = server
-        token_data["client_id"] = client_id
-        token_data["client_secret"] = client_secret
-        token_data["issued_at"] = time.time()
-        self.storage.save(token_data)
-        self._token_data = token_data
+        raise AuthError(
+            f"Headless login failed — all attempts returned errors.\n"
+            f"Last response: {last_error}\n\n"
+            "Possible causes:\n"
+            "  • API client type must be 'Server-Side Web Application' in Panopto\n"
+            "  • Your Panopto instance may not support client_credentials grant at all\n"
+            "  • Ask your Panopto admin to enable API access for this client"
+        )
 
     def login(
         self,
