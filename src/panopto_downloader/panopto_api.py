@@ -183,9 +183,26 @@ class PanoptoAPI:
         url = f"https://{server}/Panopto/Pages/Viewer/DeliveryInfo.aspx"
         params = {"deliveryId": video_id, "responseType": "json"}
 
-        # DeliveryInfo only accepts browser session cookies. Bearer tokens are
-        # explicitly rejected with a LoginRedirect error response. Use the
-        # session cookies loaded at __init__ time.
+        # Strategy 1: try Bearer token directly — some Panopto versions accept it.
+        if self._auth:
+            try:
+                token = self._auth.get_access_token()
+                r = requests.get(
+                    url,
+                    params=params,
+                    headers={"Authorization": f"Bearer {token}"},
+                    timeout=30,
+                )
+                if r.ok:
+                    d = r.json()
+                    if "ErrorCode" not in d and "LoginRedirect" not in d:
+                        return d
+            except Exception:
+                pass  # fall through to cookie-based attempt
+
+        # Strategy 2: session cookies loaded at init time (browser export or
+        # from-token).  Some Panopto instances set enough cookies when you hit
+        # the home page with a Bearer token; others need the full browser flow.
         try:
             response = self.session.get(url, params=params, timeout=30)
             response.raise_for_status()

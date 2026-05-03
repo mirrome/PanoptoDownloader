@@ -435,25 +435,26 @@ class PanoptoAuth:
     def get_session_cookies(self) -> dict[str, str]:
         """Exchange the OAuth access token for Panopto session cookies.
 
-        Makes an authenticated GET to the Panopto home page using the Bearer
-        token.  Panopto responds by setting its normal session cookies, which
-        are then returned as a plain dict.
-
-        These cookies can be passed to yt-dlp (via a cookies.txt file) and to
-        the legacy DeliveryInfo API so that both work without needing a browser.
+        Hits several Panopto web pages with the Bearer token so the server
+        can establish a full forms-auth session (ASPXAUTH + ASP.NET_SessionId).
+        The resulting cookies are what DeliveryInfo.aspx requires.
         """
         server = self.get_server()
         token = self.get_access_token()
         sess = requests.Session()
-        try:
-            sess.get(
-                f"https://{server}/Panopto/Pages/Home.aspx",
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=30,
-                allow_redirects=True,
-            )
-        except requests.RequestException:
-            pass  # Even a failed/redirected request may still set cookies
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Hit multiple pages in sequence — some Panopto versions set the
+        # full ASPXAUTH cookie only after a second authenticated request.
+        pages = [
+            f"https://{server}/Panopto/Pages/Home.aspx",
+            f"https://{server}/Panopto/Pages/Sessions/List.aspx",
+        ]
+        for url in pages:
+            try:
+                sess.get(url, headers=headers, timeout=30, allow_redirects=True)
+            except requests.RequestException:
+                pass
 
         return {c.name: c.value for c in sess.cookies}
 
