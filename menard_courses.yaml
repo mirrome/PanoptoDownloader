@@ -1,0 +1,47 @@
+# Daniel Menard's Sloan courses not in Abdul's courses.yaml
+# Run with: venv/bin/panopto-downloader --profile menard batch -c menard_courses.yaml --all-streams
+#
+# Dry-run first to confirm folders are found:
+#   venv/bin/panopto-downloader --profile menard batch -c menard_courses.yaml --all-streams --dry-run
+
+output_path: "/Volumes/NAS/MIT EMBA/MIT_Lectures"
+
+courses:
+  - search: "15.010"
+    folder: "15.010 Economics for Business Decisions"
+
+  - search: "15.060"
+    folder: "15.060 Data, Models, and Decisions"
+
+  - search: "15.016"
+    folder: "15.016"
+
+  - search: "15.076"
+    folder: "15.076"
+
+  - search: "15.383"
+    folder: "15.383 Corporate Boards: Functions and Responsibilities"
+
+  - search: "15.401"
+    folder: "15.401 Managerial Finance"
+
+  - search: "15.573"
+    folder: "15.573 Generative AI for Managers"
+
+  - search: "15.703"
+    folder: "15.703 Leading with Impact"
+
+  - search: "15.726"
+    folder: "15.726 Pricing (Executive Elective)"
+
+  - search: "15.727"
+    folder: "15.727 The Analytics Edge"
+
+  - search: "15.C51"
+    folder: "15.C51"
+
+  - search: "15.S04"
+    folder: "15.S04"
+
+  - search: "15.S20"
+    folder: "15.S20 SSIM: Global Business of Quantum Computing (GBQC)"
