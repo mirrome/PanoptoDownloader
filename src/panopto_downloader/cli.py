@@ -545,6 +545,17 @@ def auth() -> None:
         "'Server-Side Web Application' in Panopto System Settings."
     ),
 )
+@click.option(
+    "--manual",
+    is_flag=True,
+    default=False,
+    help=(
+        "Copy-paste flow for SSH/headless machines. Prints a login URL for "
+        "the account owner to open in any browser. After they log in their "
+        "browser shows a 'connection refused' page — they paste that full URL "
+        "back here and tokens are saved. No software needed on their end."
+    ),
+)
 @click.pass_context
 def auth_login(
     ctx: click.Context,
@@ -552,8 +563,9 @@ def auth_login(
     client_id: str | None,
     client_secret: str | None,
     headless: bool,
+    manual: bool,
 ) -> None:
-    """Authenticate with Panopto — browser (default) or headless.
+    """Authenticate with Panopto — browser, manual copy-paste, or headless.
 
     \b
     Credentials are read automatically from a .env file in the current
@@ -564,16 +576,26 @@ def auth_login(
     EXAMPLES:
       panopto-downloader auth login                           (browser, default profile)
       panopto-downloader --profile menard auth login \\
+        --manual \\
+        --client-id ID --client-secret SECRET               (copy-paste, works over SSH)
+      panopto-downloader --profile menard auth login \\
         --headless \\
-        --client-id ID --client-secret SECRET               (no browser, server-side app)
-      panopto-downloader --profile eecs auth login \\
-        --server mit.hosted.panopto.com --client-id ID      (EECS, browser)
+        --client-id ID --client-secret SECRET               (server-side app only)
+
+    \b
+    MANUAL MODE (--manual)  ← use this for SSH / friends' accounts:
+      1. A login URL is printed — send it to the account owner.
+      2. They open it in any browser and sign in with their Panopto password.
+      3. Their browser redirects to localhost:9127 and shows "connection refused".
+      4. They copy the full URL from the address bar and send it back to you.
+      5. Paste it here — tokens are saved and you're done.
+      No software or installation needed on their end.
 
     \b
     HEADLESS MODE (--headless):
-      Uses the OAuth2 client_credentials grant — no browser, no user interaction.
-      Works only if the Panopto API client type is 'Server-Side Web Application'.
-      Tokens auto-renew silently using the same credentials, so they never expire.
+      Uses the OAuth2 client_credentials grant — no user interaction at all.
+      Only works if the Panopto API client type is 'Server-Side Web Application'
+      AND the server permits client_credentials for that client.
 
     \b
     BROWSER MODE (default):
@@ -618,6 +640,12 @@ def auth_login(
                 )
             console.print(f"[bold]Authenticating headlessly against[/bold] {resolved_server} …")
             pa.login_headless(resolved_server, resolved_client_id, resolved_secret)
+        elif manual:
+            console.print(
+                f"[bold]Manual copy-paste login for[/bold] {resolved_server}\n"
+                "[dim]Follow the instructions below — the account owner needs no software.[/dim]"
+            )
+            pa.login_manual(resolved_server, resolved_client_id, resolved_secret)
         else:
             console.print(f"[bold]Opening browser for[/bold] {resolved_server} …")
             console.print("[dim]Waiting up to 2 minutes for you to complete login in the browser.[/dim]\n")

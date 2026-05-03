@@ -245,6 +245,81 @@ class PanoptoAuth:
             "  • Ask your Panopto admin to enable API access for this client"
         )
 
+    def login_manual(
+        self,
+        server: str,
+        client_id: str,
+        client_secret: str = "",
+    ) -> None:
+        """Run the copy-paste PKCE flow for headless / SSH environments.
+
+        Instead of starting a local HTTP server, prints the authorization URL
+        so the user can open it on any browser (phone, another laptop, etc.).
+        After login Panopto redirects to localhost:9127 which fails — the user
+        copies that full redirect URL from the browser address bar and pastes
+        it here. We extract the code and exchange it for tokens normally.
+
+        Args:
+            server:        Panopto hostname.
+            client_id:     The API client ID.
+            client_secret: Optional client secret.
+        """
+        import sys
+
+        code_verifier, code_challenge = self._generate_pkce()
+        state = secrets.token_urlsafe(16)
+
+        auth_url = (
+            f"https://{server}/Panopto/oauth2/connect/authorize"
+            f"?client_id={urllib.parse.quote(client_id)}"
+            f"&response_type=code"
+            f"&redirect_uri={urllib.parse.quote(REDIRECT_URI)}"
+            f"&scope={urllib.parse.quote(SCOPES)}"
+            f"&state={state}"
+            f"&code_challenge={code_challenge}"
+            f"&code_challenge_method=S256"
+        )
+
+        print("\n" + "─" * 60)
+        print("STEP 1 — Send this URL to the person whose account this is:")
+        print("─" * 60)
+        print(f"\n{auth_url}\n")
+        print("─" * 60)
+        print("STEP 2 — They open it in any browser and log in with their")
+        print("         Panopto username and password.")
+        print()
+        print("STEP 3 — After login their browser will try to redirect to")
+        print("         http://localhost:9127/redirect?code=...")
+        print("         and show 'connection refused' or a blank page.")
+        print("         They should copy the FULL URL from the address bar")
+        print("         (it starts with http://localhost:9127/redirect?code=)")
+        print("         and send it back to you.")
+        print("─" * 60)
+
+        while True:
+            try:
+                pasted = input("\nPaste the full redirect URL here: ").strip()
+            except (EOFError, KeyboardInterrupt):
+                raise AuthError("Login cancelled.")
+
+            if not pasted:
+                continue
+
+            parsed = urllib.parse.urlparse(pasted)
+            params = urllib.parse.parse_qs(parsed.query)
+
+            if "error" in params:
+                raise AuthError(f"Login failed: {params['error'][0]}")
+
+            if "code" not in params:
+                print("  ✗ Could not find 'code=' in that URL. Please try again.")
+                continue
+
+            code = params["code"][0]
+            break
+
+        self._exchange_code(server, client_id, code, code_verifier, client_secret)
+
     def login(
         self,
         server: str,
