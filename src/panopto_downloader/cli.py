@@ -720,7 +720,7 @@ def auth_list_profiles() -> None:
     "--browser", "-b",
     default="chrome",
     show_default=True,
-    help="Browser to export cookies from",
+    help="Browser to export cookies from (ignored when --from-token is set)",
 )
 @click.option(
     "--output", "-o",
@@ -728,22 +728,40 @@ def auth_list_profiles() -> None:
     default=None,
     help="Output path (default: ~/.config/panopto-downloader/cookies-<profile>.txt)",
 )
+@click.option(
+    "--from-token",
+    is_flag=True,
+    default=False,
+    help=(
+        "Derive cookies from the stored OAuth token instead of reading a browser. "
+        "Use this on SSH/headless machines (Mac mini, servers) where Chrome is not available."
+    ),
+)
 @click.pass_context
-def auth_export_cookies(ctx: click.Context, browser: str, output: Path | None) -> None:
-    """Export browser cookies to a file for reliable offline use.
+def auth_export_cookies(
+    ctx: click.Context,
+    browser: str,
+    output: Path | None,
+    from_token: bool,
+) -> None:
+    """Export Panopto session cookies for use by the downloader.
 
     \b
-    Closes the dependency on Chrome being shut before every download.
-    Run this once after logging into Panopto in your browser, then all
-    subsequent downloads will use the exported file automatically.
+    TWO MODES:
 
-    \b
-    EXAMPLE:
+    --from-token  (recommended for SSH / Mac mini / friends' profiles)
+      Exchanges the stored OAuth access token for session cookies silently.
+      No browser required. Works for any profile that is already logged in.
+
+      panopto-downloader --profile menard auth export-cookies --from-token
+
+    --browser (default, requires local machine with browser)
+      Reads cookies directly from Chrome or Safari's cookie store.
+      Chrome must be closed for best results.
+
       panopto-downloader auth export-cookies
       panopto-downloader auth export-cookies --browser safari
     """
-    import subprocess as _sp
-
     print_banner()
 
     profile = ctx.obj.get("profile", DEFAULT_PROFILE) if ctx.obj else DEFAULT_PROFILE
@@ -752,6 +770,28 @@ def auth_export_cookies(ctx: click.Context, browser: str, output: Path | None) -
     dest.parent.mkdir(parents=True, exist_ok=True)
 
     pa = PanoptoAuth(profile=profile)
+
+    if from_token:
+        if not pa.is_logged_in():
+            raise click.ClickException(
+                f"Profile '{profile}' is not logged in. "
+                f"Run: panopto-downloader --profile {profile} auth login"
+            )
+        console.print(f"\n[bold]Deriving cookies from OAuth token for profile '{profile}'…[/bold]")
+        try:
+            pa.write_cookies_file(dest)
+        except Exception as exc:
+            raise click.ClickException(f"Failed to derive cookies: {exc}") from exc
+
+        line_count = dest.read_text().count("\n")
+        console.print(f"[green]✓[/green] Cookies written to [bold]{dest}[/bold]")
+        console.print(f"  [dim]{line_count} cookie entries[/dim]")
+        console.print("\n[dim]This file will be used automatically for all future downloads.[/dim]")
+        return
+
+    # Browser-based extraction
+    import subprocess as _sp
+
     server = pa.get_server() if pa.is_logged_in() else DEFAULT_SERVER
 
     console.print(f"\n[bold]Exporting cookies from {browser}…[/bold]")
@@ -760,8 +800,6 @@ def auth_export_cookies(ctx: click.Context, browser: str, output: Path | None) -
         f"(Chrome must be closed for best results)[/dim]\n"
     )
 
-    # Use yt-dlp's battle-tested browser cookie extraction; --skip-download
-    # means we only export the jar without actually downloading anything.
     probe_url = f"https://{server}/Panopto/Pages/Home.aspx"
     cmd = [
         "yt-dlp",
