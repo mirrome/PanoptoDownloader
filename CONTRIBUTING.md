@@ -14,26 +14,33 @@ Versions follow `{major}.{minor}.{fixes}-{build}`:
 The build number equals the total commit count, so it is always monotonically
 increasing and deterministic — no counter file, no merge conflicts.
 
-### Setup the pre-commit hook (once per machine)
+### Setup the commit-msg hook (once per machine)
 
 ```bash
-cp scripts/pre-commit-hook.sh .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
+cp scripts/commit-msg-hook.sh .git/hooks/commit-msg
+chmod +x .git/hooks/commit-msg
+rm -f .git/hooks/pre-commit   # remove old hook if present
 ```
 
-After this, every `git commit` will automatically bump the build number in
-`src/panopto_downloader/__init__.py` and `pyproject.toml` before the commit
-is recorded. You never need to touch the version manually unless bumping
-major/minor/fixes.
+After this, every `git commit` bumps the right segment automatically based
+on the commit message prefix — no manual version editing ever needed.
 
-### Bumping major, minor, or fixes manually
+### How the hook decides what to bump
 
-Edit both files, then commit as usual — the hook will append the next build
-number automatically:
+| Commit prefix | Segment bumped | Reset |
+|---------------|---------------|-------|
+| `feat!:` / `BREAKING CHANGE` | **major** | minor=0, patch=0, build=1 |
+| `feat:` | **minor** | patch=0, build=1 |
+| `fix:` / `refactor:` / `perf:` | **patch** | build=1 |
+| `chore:` / `docs:` / `test:` / anything else | **build** | — |
 
-```python
-# src/panopto_downloader/__init__.py
-__version__ = "0.2.0"   # hook will rewrite to e.g. "0.2.0-25"
+Examples:
+```
+# Current: 0.1.3-4
+chore: update readme          →  0.1.3-5   (build only)
+fix: handle empty cookie file →  0.1.4-1   (patch bump, build resets)
+feat: add --headless login    →  0.2.0-1   (minor bump, patch+build reset)
+feat!: breaking config change →  1.0.0-1   (major bump, everything resets)
 ```
 
 ---
