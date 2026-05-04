@@ -461,14 +461,18 @@ class PanoptoRestAPI:
         folder_id: str,
         recurse: bool = True,
         _depth: int = 0,
+        _seen_ids: set[str] | None = None,
     ) -> list[PanoptoSession]:
-        """Fetch every session in *folder_id*, paging automatically.
+        """Fetch every session in *folder_id* and all its subfolders.
 
-        When *recurse* is True (default) and the folder contains no direct
-        sessions, child folders are searched one level deep so that course
-        folders whose sessions live in section sub-folders are handled
-        transparently.
+        Recursion is unconditional (not gated on the parent being empty) so
+        that course folders containing both direct sessions AND sub-section
+        folders (e.g. SP25-15.730-A, Recitations) are fully harvested.
+        Session IDs are deduplicated across the whole tree.
         """
+        if _seen_ids is None:
+            _seen_ids = set()
+
         page_size = 200
         page = 0
         results: list[PanoptoSession] = []
@@ -477,18 +481,28 @@ class PanoptoRestAPI:
                 folder_id, page=page, page_size=page_size,
                 sort_field="StartTime", sort_order="Asc",
             )
-            results.extend(batch)
-            if len(results) >= total or not batch:
+            for s in batch:
+                if s.id not in _seen_ids:
+                    _seen_ids.add(s.id)
+                    results.append(s)
+            if len(results) + (page * page_size) >= total or not batch:
                 break
             page += 1
 
-        # If this folder is empty and we haven't gone too deep, check children
-        if not results and recurse and _depth < 3:
+        # Always recurse into child folders (up to depth 5) so that section
+        # sub-folders like SP25-15.730-A, Recitations, etc. are included even
+        # when the parent folder also has some direct sessions.
+        if recurse and _depth < 5:
             try:
                 children = self.list_child_folders(folder_id)
                 for child in children:
                     results.extend(
-                        self.get_all_sessions(child.id, recurse=True, _depth=_depth + 1)
+                        self.get_all_sessions(
+                            child.id,
+                            recurse=True,
+                            _depth=_depth + 1,
+                            _seen_ids=_seen_ids,
+                        )
                     )
             except PanoptoAPIError:
                 pass
