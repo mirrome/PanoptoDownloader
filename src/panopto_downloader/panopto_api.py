@@ -345,6 +345,10 @@ class PanoptoSession:
         self.folder_id: str = data.get("FolderId", "") or ""
         folder_details = data.get("FolderDetails") or {}
         self.folder_name: str = folder_details.get("Name", "") or ""
+        # Set by get_all_sessions to track relative path from the top course
+        # folder. Empty string means the session lives directly in the course
+        # folder; "Recitations" means course/Recitations/session/.
+        self.subfolder: str = ""
         # ViewerUrl may come from API; fall back to constructing it
         self._viewer_url: str = data.get("ViewerUrl", "") or ""
         self._server = server
@@ -462,12 +466,18 @@ class PanoptoRestAPI:
         recurse: bool = True,
         _depth: int = 0,
         _seen_ids: set[str] | None = None,
+        _subfolder: str = "",
     ) -> list[PanoptoSession]:
         """Fetch every session in *folder_id* and all its subfolders.
 
-        Recursion is unconditional (not gated on the parent being empty) so
-        that course folders containing both direct sessions AND sub-section
-        folders (e.g. SP25-15.730-A, Recitations) are fully harvested.
+        Each returned session has its ``subfolder`` attribute set to the
+        folder path relative to the top-level course folder (e.g.
+        "Recitations" or "SP25-15.730-A").  Sessions sitting directly in
+        the top-level folder get an empty string.  This lets the batch
+        command mirror the Panopto folder hierarchy on disk.
+
+        Recursion is unconditional so that course folders with both direct
+        sessions and sub-section folders are fully harvested.
         Session IDs are deduplicated across the whole tree.
         """
         if _seen_ids is None:
@@ -484,6 +494,7 @@ class PanoptoRestAPI:
             for s in batch:
                 if s.id not in _seen_ids:
                     _seen_ids.add(s.id)
+                    s.subfolder = _subfolder
                     results.append(s)
             if len(results) + (page * page_size) >= total or not batch:
                 break
@@ -491,17 +502,21 @@ class PanoptoRestAPI:
 
         # Always recurse into child folders (up to depth 5) so that section
         # sub-folders like SP25-15.730-A, Recitations, etc. are included even
-        # when the parent folder also has some direct sessions.
+        # when the parent folder also has direct sessions.
         if recurse and _depth < 5:
             try:
                 children = self.list_child_folders(folder_id)
                 for child in children:
+                    child_subfolder = (
+                        f"{_subfolder}/{child.name}" if _subfolder else child.name
+                    )
                     results.extend(
                         self.get_all_sessions(
                             child.id,
                             recurse=True,
                             _depth=_depth + 1,
                             _seen_ids=_seen_ids,
+                            _subfolder=child_subfolder,
                         )
                     )
             except PanoptoAPIError:

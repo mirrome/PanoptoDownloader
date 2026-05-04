@@ -1481,7 +1481,8 @@ def batch(
         if dry_run:
             console.print(f"  [dim]Would create: {course_dir}[/dim]")
             for s in sessions:
-                console.print(f"    [dim]• {s.name}[/dim]")
+                prefix = f"  [{s.subfolder}]" if s.subfolder else ""
+                console.print(f"    [dim]•{prefix} {s.name}[/dim]")
             continue
 
         course_dir.mkdir(parents=True, exist_ok=True)
@@ -1493,16 +1494,27 @@ def batch(
                 continue
 
             safe_name = _safe_filename(session.name)
+
+            # Mirror the Panopto subfolder hierarchy on disk so that e.g.
+            # Recitations, Excel Tutorials, and class sessions each get their
+            # own subdirectory rather than being mixed together.
+            if session.subfolder:
+                safe_subfolder = "/".join(
+                    _safe_filename(part) for part in session.subfolder.split("/")
+                )
+                section_dir = course_dir / safe_subfolder
+                subfolder_label = f" [dim]({session.subfolder})[/dim]"
+            else:
+                section_dir = course_dir
+                subfolder_label = ""
+
             console.print(
-                f"\n  [bold]({si}/{len(sessions)})[/bold] {session.name}"
+                f"\n  [bold]({si}/{len(sessions)})[/bold] {session.name}{subfolder_label}"
             )
 
             if all_streams:
-                # Folder-per-session: each session gets its own subdirectory,
-                # files inside keep the session-name prefix so they remain
-                # uniquely identifiable even if moved out of the folder.
-                session_dir = course_dir / safe_name
-                session_dir.mkdir(exist_ok=True)
+                session_dir = section_dir / safe_name
+                session_dir.mkdir(parents=True, exist_ok=True)
                 _migrate_existing_assets(course_dir, session_dir, safe_name)
                 base = session_dir / safe_name
                 try:
@@ -1521,8 +1533,8 @@ def batch(
                     course=folder_name,
                     date=datetime.date.today(),
                 )
-                session_dir = course_dir / safe_name
-                session_dir.mkdir(exist_ok=True)
+                session_dir = section_dir / safe_name
+                session_dir.mkdir(parents=True, exist_ok=True)
                 _migrate_existing_assets(course_dir, session_dir, safe_name)
                 output_path = session_dir / f"{safe_name}.mp4"
                 result = downloader.download_lecture(lecture, output_path=output_path)
