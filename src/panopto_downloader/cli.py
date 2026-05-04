@@ -1514,6 +1514,8 @@ def batch(
 
             if all_streams:
                 session_dir = section_dir / safe_name
+                # Move existing flat session dir into subfolder before downloading
+                _migrate_session_dir(course_dir, session_dir, safe_name)
                 session_dir.mkdir(parents=True, exist_ok=True)
                 _migrate_existing_assets(course_dir, session_dir, safe_name)
                 base = session_dir / safe_name
@@ -1534,6 +1536,8 @@ def batch(
                     date=datetime.date.today(),
                 )
                 session_dir = section_dir / safe_name
+                # Move existing flat session dir into subfolder before downloading
+                _migrate_session_dir(course_dir, session_dir, safe_name)
                 session_dir.mkdir(parents=True, exist_ok=True)
                 _migrate_existing_assets(course_dir, session_dir, safe_name)
                 output_path = session_dir / f"{safe_name}.mp4"
@@ -1555,6 +1559,34 @@ def batch(
         console.print(f"  [yellow]Courses skipped (no folder found):[/yellow]")
         for name in skipped_courses:
             console.print(f"    • {name}")
+
+
+def _migrate_session_dir(course_dir: Path, session_dir: Path, safe_name: str) -> bool:
+    """Move an existing flat session directory into the new subfolder layout.
+
+    When a session was previously downloaded into ``course_dir/session_name/``
+    (old flat structure) but now belongs in a subfolder (e.g.
+    ``course_dir/Recitations/session_name/``), this function moves the whole
+    directory so the downloader finds existing files and skips re-downloading.
+
+    Returns True if a migration was performed.
+    """
+    old_dir = course_dir / safe_name
+    if old_dir == session_dir:
+        return False  # already in the right place
+    if not old_dir.exists() or not old_dir.is_dir():
+        return False  # nothing to migrate
+    if session_dir.exists():
+        return False  # target already exists — don't overwrite
+
+    try:
+        session_dir.parent.mkdir(parents=True, exist_ok=True)
+        old_dir.rename(session_dir)
+        console.print(f"    [dim]Moved existing session folder → {session_dir.relative_to(course_dir.parent)}[/dim]")
+        return True
+    except OSError as exc:
+        console.print(f"    [yellow]⚠ Could not move existing session folder: {exc}[/yellow]")
+        return False
 
 
 def _safe_filename(name: str) -> str:
