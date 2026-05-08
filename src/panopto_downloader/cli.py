@@ -1561,6 +1561,136 @@ def batch(
             console.print(f"    • {name}")
 
 
+@main.command("download-links", context_settings=CONTEXT_SETTINGS)
+@click.argument(
+    "links_file",
+    type=click.Path(exists=True, path_type=Path),
+)
+@click.option(
+    "--cookies", "-k",
+    type=click.Path(exists=True, path_type=Path),
+    required=True,
+    help="Path to a Netscape cookies.txt file (exported from browser)",
+)
+@click.option(
+    "--output-dir", "-o",
+    type=click.Path(path_type=Path),
+    required=True,
+    help="Root download directory (e.g. /Volumes/NAS/MIT EMBA/MIT_Lectures)",
+)
+@click.option(
+    "--folder", "-f",
+    required=True,
+    help="Course folder name to create under output-dir (e.g. '15.563 AI for Business')",
+)
+@click.option(
+    "--dry-run", "-n",
+    is_flag=True,
+    help="Show what would be downloaded without downloading anything",
+)
+def download_links(
+    links_file: Path,
+    cookies: Path,
+    output_dir: Path,
+    folder: str,
+    dry_run: bool,
+) -> None:
+    """Download all streams for every Panopto URL listed in LINKS_FILE.
+
+    LINKS_FILE is a plain text file with one Panopto viewer URL per line.
+    Lines starting with # are treated as labels/comments.
+
+    Each session is saved under OUTPUT_DIR/FOLDER/session_name/ with
+    composed, camera, and slides files — identical to the batch command.
+
+    \b
+    Example:
+      panopto-downloader download-links "Panopto Links.txt" \\
+        --cookies ~/Downloads/mitsloan_cookies.txt \\
+        --output-dir "/Volumes/NAS/MIT EMBA/MIT_Lectures" \\
+        --folder "15.563 Artificial Intelligence for Business"
+    """
+    from .config import AppConfig
+    from .models import AppConfig as _AC  # noqa: F811 — same class, alias for clarity
+
+    print_banner()
+
+    # Parse links file: collect (label, url) pairs
+    entries: list[tuple[str, str]] = []
+    current_label: str | None = None
+    with open(links_file) as fh:
+        for raw in fh:
+            line = raw.strip()
+            if not line:
+                continue
+            if line.startswith("#"):
+                current_label = line.lstrip("#").strip() or current_label
+            elif line.startswith("http"):
+                label = current_label or f"Session {len(entries) + 1}"
+                entries.append((label, line))
+                current_label = None  # consume the label
+
+    if not entries:
+        console.print("[red]No URLs found in links file.[/red]")
+        raise SystemExit(1)
+
+    course_dir = output_dir / folder
+    course_dir.mkdir(parents=True, exist_ok=True)
+
+    console.print(
+        f"\n[bold]Download links — {len(entries)} session(s)[/bold]\n"
+        f"  Course folder: [cyan]{course_dir}[/cyan]\n"
+        f"  Cookies:       [cyan]{cookies}[/cyan]\n"
+        f"  Mode:          {'[yellow]dry run[/yellow]' if dry_run else 'all streams'}\n"
+    )
+
+    try:
+        config = AppConfig()
+    except Exception:
+        config = AppConfig()
+    config.download_path = course_dir
+
+    downloader = VideoDownloader(config, cookies_file=cookies, write_subs=True)
+
+    total_ok = 0
+    total_fail = 0
+
+    for i, (label, url) in enumerate(entries, 1):
+        safe_name = _safe_filename(label)
+        session_dir = course_dir / safe_name
+        session_dir.mkdir(parents=True, exist_ok=True)
+        base = session_dir / safe_name
+
+        console.print(
+            f"\n[bold]({i}/{len(entries)})[/bold] {label}\n"
+            f"  [dim]{url}[/dim]"
+        )
+
+        if dry_run:
+            console.print(
+                f"  [dim]Would download to: {session_dir.relative_to(output_dir)}[/dim]"
+            )
+            continue
+
+        try:
+            results = downloader.download_all_panopto_streams(url, base, dry_run=False)
+            ok = sum(1 for p in results.values() if p is not None)
+            if ok > 0:
+                total_ok += 1
+            else:
+                total_fail += 1
+        except DownloadError as exc:
+            console.print(f"  [red]✗ Failed: {exc}[/red]")
+            total_fail += 1
+
+    console.print(
+        f"\n[bold]{'═' * 60}[/bold]\n"
+        f"[bold]Complete[/bold]\n"
+        f"  [green]Downloaded:[/green] {total_ok}\n"
+        f"  [red]Failed:[/red]     {total_fail}"
+    )
+
+
 def _migrate_session_dir(course_dir: Path, session_dir: Path, safe_name: str) -> bool:
     """Move an existing flat session directory into the new subfolder layout.
 
