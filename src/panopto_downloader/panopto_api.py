@@ -234,8 +234,12 @@ class PanoptoAPI:
         # Server returns HTTP 200 with an error body when no valid session exists.
         if "ErrorCode" in data or "LoginRedirect" in data:
             err = data.get("ErrorMessage") or "session cookie required"
+            top_keys = list(data.keys())
+            cookies_sent = [c.name for c in self.session.cookies]
             raise PanoptoAPIError(
                 f"DeliveryInfo authentication failed ({err}). "
+                f"Response keys: {top_keys}. "
+                f"Cookies sent: {cookies_sent}. "
                 "Run: panopto-downloader auth export-cookies"
             )
 
