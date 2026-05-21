@@ -230,7 +230,14 @@ class PanoptoAPI:
         # filtered to the target server. Using a header bypasses requests' broken
         # domain-matching for manually-loaded cookies.
         cookie_header = self._cookie_header_for(server)
-        headers: dict[str, str] = {}
+        headers: dict[str, str] = {
+            # Use a real browser UA — Panopto may reject python-requests UA
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+        }
         if cookie_header:
             headers["Cookie"] = cookie_header
         try:
@@ -245,10 +252,12 @@ class PanoptoAPI:
         # Server returns HTTP 200 with an error body when no valid session exists.
         if "ErrorCode" in data or "LoginRedirect" in data:
             err = data.get("ErrorMessage") or "session cookie required"
-            cookie_names = [name for _, name, _ in getattr(self, "_raw_cookies", []) if server in _]
+            raw = getattr(self, "_raw_cookies", [])
+            panopto_cookies = [name for domain, name, _ in raw if server.endswith(domain) or domain.endswith(server)]
             raise PanoptoAPIError(
                 f"DeliveryInfo authentication failed ({err}). "
-                f"Panopto cookies available: {cookie_names}. "
+                f"Panopto cookies sent ({len(panopto_cookies)}): {panopto_cookies}. "
+                f"Cookie header length: {len(cookie_header)}. "
                 "Run: panopto-downloader auth export-cookies"
             )
 
