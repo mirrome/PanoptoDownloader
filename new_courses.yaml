@@ -5,7 +5,7 @@
 #   panopto-downloader batch -c new_courses.yaml --all-streams --dry-run
 #   panopto-downloader batch -c new_courses.yaml --all-streams
 
-output_path: "/Volumes/NAS/MIT EMBA/MIT_Lectures"
+output_path: "/Volumes/NAS/MIT-EMBA/MIT_Lectures"
 
 courses:
   # ── Spring 2024-2025 ────────────────────────────────────────────────────

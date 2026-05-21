@@ -1,7 +1,7 @@
 # Daniel Menard's additional Sloan courses (not in Abdul's courses.yaml)
 # Run with: venv/bin/panopto-downloader --profile menard batch -c menard_courses.yaml --all-streams
 
-output_path: "/Volumes/NAS/MIT EMBA/MIT_Lectures"
+output_path: "/Volumes/NAS/MIT-EMBA/MIT_Lectures"
 
 courses:
   - search: "15.726"

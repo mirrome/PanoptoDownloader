@@ -6,7 +6,7 @@
 #   panopto-downloader batch -c refresh_courses.yaml --all-streams --dry-run
 #   panopto-downloader batch -c refresh_courses.yaml --all-streams
 
-output_path: "/Volumes/NAS/MIT EMBA/MIT_Lectures"
+output_path: "/Volumes/NAS/MIT-EMBA/MIT_Lectures"
 
 courses:
   # ── Orientation ─────────────────────────────────────────────────────────

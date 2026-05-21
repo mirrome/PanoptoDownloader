@@ -463,10 +463,23 @@ class PanoptoAuth:
 
         The file can be passed directly to yt-dlp via ``--cookies``.
 
+        Raises AuthError if the server returned no usable session cookies, so
+        that an existing valid cookies file is never overwritten with an empty one.
+
         Returns the path that was written.
         """
         cookies = self.get_session_cookies()
         server = self.get_server()
+
+        if not cookies:
+            raise AuthError(
+                f"No session cookies were returned by {server}.\n"
+                "This Panopto instance does not establish a browser session via "
+                "Bearer token alone.\n\n"
+                "Workaround — export cookies directly from Chrome instead:\n"
+                f"  panopto-downloader --profile {self.profile} auth export-cookies\n"
+                "(Close Chrome first for best results, then reopen it.)"
+            )
 
         path.parent.mkdir(parents=True, exist_ok=True)
         lines = ["# Netscape HTTP Cookie File\n"]

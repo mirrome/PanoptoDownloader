@@ -4,10 +4,10 @@
 #   folder: name of the local download subfolder (human-readable course name)
 #
 # Usage:
-#   panopto-downloader batch --output-dir "/Volumes/NAS/MIT EMBA/MIT_Lectures" --all-streams
-#   panopto-downloader batch --output-dir "/Volumes/NAS/MIT EMBA/MIT_Lectures" --all-streams --dry-run
+#   panopto-downloader batch --output-dir "/Volumes/NAS/MIT-EMBA/MIT_Lectures" --all-streams
+#   panopto-downloader batch --output-dir "/Volumes/NAS/MIT-EMBA/MIT_Lectures" --all-streams --dry-run
 
-output_path: "/Volumes/NAS/MIT EMBA/MIT_Lectures"
+output_path: "/Volumes/NAS/MIT-EMBA/MIT_Lectures"
 
 courses:
   - search: "EMBA26 Orientation"

@@ -5,7 +5,7 @@
 #   panopto-downloader --profile eecs batch -c eecs_courses.yaml --all-streams --dry-run
 #   panopto-downloader --profile eecs batch -c eecs_courses.yaml --all-streams
 
-output_path: "/Volumes/NAS/MIT EMBA/MIT_Lectures"
+output_path: "/Volumes/NAS/MIT-EMBA/MIT_Lectures"
 
 courses:
   - search: "6.8610"

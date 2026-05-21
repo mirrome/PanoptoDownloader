@@ -792,7 +792,10 @@ def auth_export_cookies(
     # Browser-based extraction
     import subprocess as _sp
 
-    server = pa.get_server() if pa.is_logged_in() else DEFAULT_SERVER
+    # Read server from stored token data directly — avoids a token refresh
+    # network call that can fail due to SSL inspection proxies or no connectivity.
+    _stored = pa.storage.load()
+    server = (_stored.get("server") if _stored else None) or DEFAULT_SERVER
 
     console.print(f"\n[bold]Exporting cookies from {browser}…[/bold]")
     console.print(

@@ -119,10 +119,29 @@ class PanoptoAPI:
         elif cookies_dict:
             for name, value in cookies_dict.items():
                 self.session.cookies.set(name, value)
-        elif not auth:
-            # Live browser extraction only when no OAuth is configured — avoids
-            # the Chrome-open / stale-cookie problem for API-authenticated users.
-            self._load_browser_cookies(browser)
+        else:
+            # No explicit cookies source — try the exported profile cookies file
+            # first (written by `auth export-cookies`). Only fall back to live
+            # browser extraction when no OAuth is configured, to avoid the
+            # Chrome-open / stale-cookie problem for API-authenticated users.
+            exported = self._find_exported_cookies(auth)
+            if exported:
+                self._load_cookies_from_file(exported)
+            elif not auth:
+                self._load_browser_cookies(browser)
+
+    @staticmethod
+    def _find_exported_cookies(auth: "Any | None") -> "Path | None":
+        """Return the exported cookies file for the auth profile, if it exists and is non-trivial."""
+        from pathlib import Path as _Path
+        config_dir = _Path("~/.config/panopto-downloader").expanduser()
+        if auth is not None:
+            profile = getattr(auth, "profile", "default")
+            profile_path = config_dir / f"cookies-{profile}.txt"
+            if profile_path.exists() and profile_path.stat().st_size > 100:
+                return profile_path
+        default_path = config_dir / "cookies.txt"
+        return default_path if default_path.exists() and default_path.stat().st_size > 100 else None
 
     def _load_cookies_from_file(self, cookies_file: Path) -> None:
         """Load cookies from Netscape format cookies.txt file.

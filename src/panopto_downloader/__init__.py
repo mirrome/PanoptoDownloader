@@ -5,6 +5,6 @@ detects multi-stream content (slides + camera), and composites
 them into high-quality side-by-side videos with metadata overlays.
 """
 
-__version__ = "0.2.1-2"
+__version__ = "0.3.0-1"
 __author__ = "Abdul Rehman"
 
