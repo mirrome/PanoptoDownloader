@@ -894,21 +894,72 @@ class VideoDownloader:
         )
 
         console.print("[bold]Fetching stream info via Panopto API…[/bold]")
+        delivery_info_failed = False
         try:
             delivery_info = api.get_delivery_info(video_id, server)
         except PanoptoAPIError as exc:
+            delivery_info_failed = True
             err_msg = str(exc)
             if "export-cookies" in err_msg or "session cookie" in err_msg:
                 console.print(
-                    "\n[bold red]✗ No session cookies available for stream discovery.[/bold red]\n"
-                    "  Panopto's stream info endpoint requires browser session cookies\n"
-                    "  (OAuth tokens alone are not accepted by this endpoint).\n\n"
-                    "  Fix — run this once, then downloads will work without Chrome:\n"
-                    "    [bold cyan]panopto-downloader auth export-cookies[/bold cyan]\n"
+                    "\n[yellow]⚠  DeliveryInfo requires browser session cookies — "
+                    "falling back to yt-dlp for composed view only.\n"
+                    "  Camera/slide streams unavailable without valid cookies.\n"
+                    "  Run [bold cyan]panopto-downloader --profile eecs auth export-cookies[/bold cyan] "
+                    "on the machine where you are logged into mit.hosted.panopto.com in Chrome.[/yellow]\n"
                 )
             else:
-                console.print(f"[red]✗ Stream discovery failed: {exc}[/red]")
-            # Return only the composed result (already downloaded or skipped above)
+                console.print(f"[yellow]⚠  Stream discovery failed ({exc}) — falling back to yt-dlp.[/yellow]\n")
+
+        if delivery_info_failed:
+            # Fallback: download just the composed view via yt-dlp with viewer URL + cookies.
+            # Camera/slide streams are only available via DeliveryInfo.
+            if include_composed:
+                composed_path = Path(str(base_path) + "_composed.mp4")
+                part_path = self._part_path(composed_path)
+                console.print("[bold cyan]── Composed view (yt-dlp fallback) ──[/bold cyan]")
+                if self._is_complete(composed_path):
+                    print_info(f"Already exists ({format_bytes(composed_path.stat().st_size)}), skipping")
+                    results["composed"] = composed_path
+                elif dry_run:
+                    console.print(f"  [dim]Would download: {composed_path.name}[/dim]")
+                    results["composed"] = composed_path
+                elif cookies_file:
+                    import tempfile, shutil
+                    if part_path.exists():
+                        part_path.unlink(missing_ok=True)
+                    try:
+                        with tempfile.TemporaryDirectory(prefix="panopto_") as _tmp_dir:
+                            tmp_path = Path(_tmp_dir) / "composed.mp4"
+                            cmd = self._get_yt_dlp_cmd()
+                            cmd.extend([
+                                "--retries", "10",
+                                "--fragment-retries", "10",
+                                "--retry-sleep", "5",
+                                "--socket-timeout", "60",
+                                "-f", "hls-2160/hls-1080/hls-720/hls-480/best",
+                                "-o", str(tmp_path),
+                                url,
+                            ])
+                            proc = subprocess.run(cmd, capture_output=False, check=False)
+                            if proc.returncode == 0 and tmp_path.exists() and tmp_path.stat().st_size >= 1_000_000:
+                                console.print(f"  [dim]Moving to NAS: {format_bytes(tmp_path.stat().st_size)}…[/dim]")
+                                shutil.move(str(tmp_path), str(composed_path))
+                                results["composed"] = composed_path
+                                print_success(f"Composed: {format_bytes(composed_path.stat().st_size)}")
+                            else:
+                                results["composed"] = None
+                                print_error("Composed download failed (yt-dlp fallback)")
+                    except Exception as exc2:
+                        print_error(f"Composed download error: {exc2}")
+                        results["composed"] = None
+                else:
+                    console.print(
+                        "[red]✗ No cookies available for yt-dlp fallback either.\n"
+                        "  Export cookies on the machine where Chrome is logged into "
+                        "mit.hosted.panopto.com, then scp the file to this machine.[/red]"
+                    )
+                    results["composed"] = None
             return results
 
         delivery = (
